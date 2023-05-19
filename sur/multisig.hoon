@@ -1,34 +1,52 @@
 ::  multisig gall app
 :: 
 ::  deploy a multisig contract & data item
-/+  smart=zig-sys-smart
+/+  *zig-sys-smart
+/=  multisig-con  /con/lib/multisig
 /*  multisig-jam  %jam  /con/compiled/multisig/jam
 |%
-++  multisig-code  [- +]:(cue multisig-jam)
-++  publish-contract  0x1111.1111
 ::
 +$  multisig  
-  $:  =members
-      pending=proposals
-      =proposals
-      name=@t           :: remove?
-      con=id:smart
+  $:  name=@t
+      members=(set member)  
+      =proposals          :: pending
+      executed=proposals               
+      con=id
   ==
-+$  member  (pair (unit address:smart) (unit ship))
-+$  members  (set member)
+::  this is the on-chain noun
+++  multisig-state  multisig-state:multisig-con
++$  member  (pair (unit address) (unit ship))
 ::
-+$  sigs  (map address:smart =sig:smart)
-+$  proposals  (map =hash:smart [=proposal =sigs])
++$  proposals  (map =hash =proposal)
+::  or: (map =hash [=proposal =sigs])
++$  sigs  (map address =sig)
 ::
-+$  proposal  :: from con/lib
-  $:  calls=(list call:smart)
-      votes=(map address:smart ?)
++$  proposal
+  $:  name=@t
+      calls=(list call)
+      votes=(map address ?)
+      =sigs
+      deadline=@ud
       ayes=@ud
       nays=@ud
   ==
 +$  action
-  $%  [%create =address:smart threshold=@ud =members name=@t]
-      [%vote multisig=id:smart =hash:smart aye=?]
+  ::  need a load function, on- and off-chain versions of propose&vote
+  $%  [%create =address threshold=@ud members=(set member) name=@t]
+      [%propose =address multisig=id calls=@ on-chain=? deadline=@ud name=@t]
+      [%vote multisig=id =hash aye=? on-chain=? sig=(unit sig)]
+      [%execute =address multisig=id =hash]
+      :: 
+      [%find-addy to=@p]
+      ::  [%invite @p multisig=id]  poke entire thing to them..?
+      [%load multisig=id name=@t]
+  ==
++$  thread-update
+  $%  [%denied from=@p]
+      [%shared from=@p address=@ux]
   ==
 +$  sig  [v=@ r=@ s=@]
+::
+++  multisig-code  [- +]:(cue multisig-jam)
+++  publish-contract  0x1111.1111
 --

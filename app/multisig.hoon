@@ -4,7 +4,9 @@
 +$  state-0
   $:  %0
       multis=(map @ux multisig)
-      pending=(unit multisig)
+      :: pending tx:s 
+      pending-m=(unit multisig)
+      pending-p=(unit proposal)
   ==
 +$  card  card:agent:gall
 --
@@ -36,7 +38,7 @@
         %wallet-update
       (handle-wallet-update:hc !<(wallet-update:wallet vase))
       ::
-      ::  share-address-poke
+      ::  share-address-poke, through khan thread?
     ==
   [cards this]
   --
@@ -70,8 +72,8 @@
       ?~  addy  ~  :: add a poke if ship exists
       `addy
     ::
-    =+  [members.act ~ ~ name.act 0x0]
-    :_  state(pending `-)  :_  ~
+    =+  [name.act members.act ~ ~ 0x0]
+    :_  state(pending-m `-)  :_  ~
     :*  %pass   /create-multisig
         %agent  [our.bowl %uqbar]
         %poke   %wallet-poke
@@ -93,8 +95,91 @@
     ==  ==  ==
   ::
       %vote
+    ?:  =(our.bowl src.bowl)
+      ?:  =(on-chain.act %.n)
+        ::  vote on off-chain proposal. 
+        ::  note: need a divide between off and on-chain data.
+        ::  especially for molding. should be doable, but a flag somewhere.
+        `state
+      ::  post vote on-chain, pending-v too much?
+      `state
+    `state
+  :: 
+      %propose
+    =+  m=(~(got by multis) multisig.act)  :: revise got by
+    ?:  =(our.bowl src.bowl)
+      ?:  =(on-chain.act %.n)
+        :: we are posting an on-chain proposal
+        :: concanate
+        =+  calls=;;((list call:smart) (cue calls.act))
+        :_  state(pending-p `[name.act calls ~ ~ deadline.act 0 0])  
+        :_  ~
+        :*  %pass   /create-proposal
+            %agent  [our.bowl %uqbar]
+            %poke   %wallet-poke
+            !>  ^-  wallet-poke:wallet
+            :*  %transaction
+                origin=`[%multisig /create-proposal]
+                from=address.act
+                contract=con.m
+                town=0x0
+                :-  %noun
+                :+  %propose
+                  multisig.act
+                calls
+        ==  ==
+      ::  off-chain proposal
+      `state
+    ::  someone is poking us with off-chain proposal, 
+    ::  could be on-chain but we should hear that from chain in that case
+    ?>  =(on-chain.act %.n)  
+    `state
+  :: 
+      %execute
     ?>  =(our.bowl src.bowl)
-    ::  might-come from us or someone else. verify-sig, add.
+    =+  m=(~(got by multis) multisig.act)
+    =/  prop=proposal  (~(got by proposals.m) hash.act)
+    ::  optional, veriff sigs off-chain...?
+    :_  state ::  add pending
+    :_  ~
+    :*  %pass   /execute
+        %agent  [our.bowl %uqbar]
+        %poke   %wallet-poke
+        !>  ^-  wallet-poke:wallet
+        :*  %transaction
+            origin=`[%multisig /execute]
+            from=address.act
+            contract=con.m
+            town=0x0
+            :-  %noun
+            :^    %execute
+                multisig.act
+              calls.prop
+            deadline.prop
+    ==  ==
+  ::
+      %load
+    ?>  =(our.bowl src.bowl)
+    ::  scry out multisig and add to our state/tracked
+    =/  up
+      .^  update:indexer  %gx
+        (scot %p our.bowl)  %uqbar  (scot %da now.bowl)
+        /indexer/newest/item/(scot %ux 0x0)/(scot %ux multisig.act)/noun
+      ==
+    ?>  ?=(%newest-item -.up)
+    =+  item=item.up
+    ?>  ?=(%.y -.item)
+    ::  fix
+    =/  m  ;;(multisig-state noun.p.item)
+    =/  members  %+  turn  ~(tap in members.m)
+        |=  =address
+        [`address ~]
+    ::  format proposals, members, to be like off-chain state...
+    ::  empty names and deadlines?
+    `state
+  ::
+      %find-addy
+    :: route to khan. answer in on-arvo.
     `state
   ==
 ::
@@ -107,11 +192,10 @@
     ?+    q.u.origin.update  ~|("got receipt from weird origin" !!)
         [%create ~]      
       ?.  =(%0 errorcode.output.update)
-        `state(pending ~)
-      ~&  "create update: {<update>}"
+        `state(pending-m ~)
       ::  look for %multisig label, fetch contract from it.
       ::  or other way around, one contract changed, with us as holder due to deploy?
-      ?~  pending  `state
+      ?~  pending-m  `state
       =/  modified=(list item:smart)  
         (turn ~(val by modified.output.update) tail)
       ::  
@@ -128,16 +212,25 @@
         `[id.p.item source.p.item]
       ?~  ids  `state
       ::
-      =/  new  u.pending(con con.u.ids)
-      :_  state(multis (~(put by multis) data.u.ids new), pending ~)
+      =/  new  u.pending-m(con con.u.ids)
+      :_  state(multis (~(put by multis) data.u.ids new), pending-m ~)
       ~
+    ::
+        [%create-proposal ~]
+      `state
+    ::  
+        [%create-vote ~]
+      `state
+    ::  
+        [%execute ~]
+      :: only one that's exclusively off-chain
+      `state
     ==
   ::
       %signed-message
     ?>  ?=(^ origin.update)
     ?>  =([%multisig /sign-calls] u.origin.update)
     ::
-    ?~  pending  `state
     `state
   ==
 ++  handle-scry
