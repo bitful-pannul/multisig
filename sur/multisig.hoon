@@ -9,16 +9,14 @@
 +$  multisig  
   $:  name=@t
       members=(set member)  
-      =proposals          :: pending
-      executed=proposals               
+      pending=proposals
+      executed=(list hash)    :: storing specific on-chain tx data might lead to mismatches           
       con=id
   ==
-::  this is the on-chain noun
-++  multisig-state  multisig-state:multisig-con
+++  multisig-state  multisig-state:multisig-con ::  on-chain noun
 +$  member  (pair (unit address) (unit ship))
 ::
 +$  proposals  (map =hash =proposal)
-::  or: (map =hash [=proposal =sigs])
 +$  sigs  (map address =sig)
 ::
 +$  proposal
@@ -31,10 +29,10 @@
       nays=@ud
   ==
 +$  action
-  ::  need a load function, on- and off-chain versions of propose&vote
+  ::  need a load function, on- and off-chain versions of propose&vote, currently in the same method, mayb separate
   $%  [%create =address threshold=@ud members=(set member) name=@t]
-      [%propose =address multisig=id calls=@ on-chain=? deadline=@ud name=@t]
-      [%vote multisig=id =hash aye=? on-chain=? sig=(unit sig)]
+      [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t]
+      [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
       [%execute =address multisig=id =hash]
       :: 
       [%find-addy to=@p]
@@ -49,4 +47,24 @@
 ::
 ++  multisig-code  [- +]:(cue multisig-jam)
 ++  publish-contract  0x1111.1111
+++  execute-jold-hash  0x1bdb.45ec.612a.7371.4ce8.f462.0108.5ab7
+::  ++  execute-json  can't find de:json:html or de-json:html????????
+::    %-  need
+::    %-  de:json:html
+::    ^-  cord
+::    '''
+::    [
+::      {"multisig": "ux"},
+::      {"calls": [
+::        "list",
+::        [
+::          {"contract": "ux"},
+::          {"town": "ux"},
+::          {"calldata": [{"p": "tas"}, {"q": "*"}]}
+::        ]
+::      ]},
+::      {"nonce": "ud"},
+::      {"deadline": "ud"}
+::    ]
+::    '''
 --

@@ -64,8 +64,8 @@
   ^-  (quip card _state)
   ?-    -.act
       %create
-    :: if one of the addresses is ~, poke ship to get theirs before creation
-    ?>  =(src.bowl our.bowl)
+    :: todo: if one of the addresses is ~, poke ship to get theirs before creation
+    ?>  =(src our):bowl
     =/  members  
       %+  murn  ~(tap by members.act)
       |=  [addy=(unit address:smart) ship=(unit ship:smart)]
@@ -94,25 +94,13 @@
                 (make-pset:smart members)
     ==  ==  ==
   ::
-      %vote
-    ?:  =(our.bowl src.bowl)
-      ?:  =(on-chain.act %.n)
-        ::  vote on off-chain proposal. 
-        ::  note: need a divide between off and on-chain data.
-        ::  especially for molding. should be doable, but a flag somewhere.
-        `state
-      ::  post vote on-chain, pending-v too much?
-      `state
-    `state
-  :: 
       %propose
     =+  m=(~(got by multis) multisig.act)  :: revise got by
-    ?:  =(our.bowl src.bowl)
-      ?:  =(on-chain.act %.n)
+    =+  calls=;;((list call:smart) (cue calls.act))
+    ?:  =(our src):bowl
+      ?:  =(on-chain.act %.y)
         :: we are posting an on-chain proposal
-        :: concanate
-        =+  calls=;;((list call:smart) (cue calls.act))
-        :_  state(pending-p `[name.act calls ~ ~ deadline.act 0 0])  
+        :_  state(pending-p `[name.act calls ~ ~ 0 0 0])  
         :_  ~
         :*  %pass   /create-proposal
             %agent  [our.bowl %uqbar]
@@ -128,17 +116,54 @@
                   multisig.act
                 calls
         ==  ==
-      ::  off-chain proposal
-      `state
-    ::  someone is poking us with off-chain proposal, 
+      ::  off-chain proposal, poke ships 
+      =+  (need (len-executed multisig.act))
+      =/  typed-message  
+        :+  multisig.act
+          execute-jold-hash
+        [multisig.act calls - deadline.act]
+      ::
+      =+  %+  murn  ~(tap in members.m)
+        |=  [(unit @ux) ship=(unit ship)]
+        ?~  ship  ~
+        :-  ~
+        :*  %pass   /poke-proposal
+            %agent  [u.ship %multisig]
+            %poke   %multisig-action
+            !>  ^-  action
+            :*  %propose     :: define forwarding abstract logic 
+                address.act
+                multisig.act
+                calls.act
+                %.n
+                `(shag:merk typed-message)
+                deadline.act
+                name.act
+        ==  ==
+      :-  -
+      =-  state(multis (~(put by multis) multisig.act -))
+      =-  m(pending (~(put by pending.m) (shag:merk typed-message) -))
+      ^-  proposal
+      [name.act calls ~ ~ deadline.act 0 0]
+    ::  someone is poking us with off-chain proposal,  
     ::  could be on-chain but we should hear that from chain in that case
-    ?>  =(on-chain.act %.n)  
-    `state
+    ::  or use sequencer receipts.
+    ?>  =(on-chain.act %.n)
+    =+  %+  murn  ~(tap in members.m)
+      |=  [(unit @ux) ship=(unit ship)]
+      ship
+    ?~  (find ~[src.bowl] -)  !!  
+    =+  (~(get by pending.m) (need hash.act))
+    ?^  -  `state  :: already have a pending proposal with that hash..   
+    ::  verify sigs timepoint wen
+    =-  `state(multis (~(put by multis) multisig.act -))
+    =-  m(pending (~(put by pending.m) (need hash.act) -))
+    [name.act calls ~ ~ deadline.act 0 0]
   :: 
       %execute
-    ?>  =(our.bowl src.bowl)
+    ?>  =(our src):bowl
     =+  m=(~(got by multis) multisig.act)
-    =/  prop=proposal  (~(got by proposals.m) hash.act)
+    =/  prop=proposal  (~(got by pending.m) hash.act)
     ::  optional, veriff sigs off-chain...?
     :_  state ::  add pending
     :_  ~
@@ -152,14 +177,53 @@
             contract=con.m
             town=0x0
             :-  %noun
-            :^    %execute
+            :*  %execute
                 multisig.act
-              calls.prop
-            deadline.prop
-    ==  ==
+                sigs.prop
+                calls.prop
+                deadline.prop
+    ==  ==  ==
   ::
+      %vote
+    =+  m=(~(got by multis) multisig.act)
+    ?:  =(our src):bowl
+      ?:  =(on-chain.act %.y)
+        ::  pending or just wait for batch
+        :_  state
+        :_  ~
+        :*  %pass   /vote
+            %agent  [our.bowl %uqbar]
+            %poke   %wallet-poke
+            !>  ^-  wallet-poke:wallet
+            :*  %transaction
+                origin=`[%multisig /create-vote]
+                from=address.act
+                contract=con.m
+                town=0x0
+                :-  %noun
+                :*  %vote
+                    multisig.act
+                    hash.act
+        ==  ==  ==
+      ::  vote on off-chain proposal. 
+      ::  note: need a divide between off and on-chain data.
+      ::  especially for molding. should be doable, but a flag somewhere.
+      ::  sign-message, then poke to ships.
+      `state
+    ?>  =(on-chain.act %.n)
+    ?~  sig.act  `state
+    =/  prop=proposal  (~(got by pending.m) hash.act)
+    =+  %-  shag:merk 
+        :*  multisig.act 
+            (jam calls.prop) 
+            (need (len-executed multisig.act)) 
+            deadline.prop
+        ==
+    ?>  (uqbar-validate:sig address.act - u.sig.act)
+    `state
+  :: 
       %load
-    ?>  =(our.bowl src.bowl)
+    ?>  =(our src):bowl
     ::  scry out multisig and add to our state/tracked
     =/  up
       .^  update:indexer  %gx
@@ -245,4 +309,16 @@
     =/  multi  (~(get by multis) id)
     ``noun+!>(~)
   ==
+++  len-executed
+  |=  =id:smart
+  =/  up
+    .^  update:indexer  %gx
+      (scot %p our.bowl)  %uqbar  (scot %da now.bowl)
+      /indexer/newest/item/(scot %ux 0x0)/(scot %ux id)/noun
+    ==
+  ?~  up  ~
+  ?>  ?=(%newest-item -.up)  :: return ~ on fail
+  =+  item=item.up
+  ?>  ?=(%.y -.item)
+  `(lent executed:;;(multisig-state noun.p.item))
 --
