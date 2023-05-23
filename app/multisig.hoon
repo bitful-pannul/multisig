@@ -1,5 +1,5 @@
-/-  *multisig, indexer=zig-indexer, wallet=zig-wallet
-/+  smart=zig-sys-smart, sig=zig-sig, merk, default-agent, dbug
+/-  *multisig, indexer=zig-indexer, wallet=zig-wallet, uqbar=zig-uqbar
+/+  smart=zig-sys-smart, sig=zig-sig, merk, default-agent, dbug, io=agentio
 |%
 +$  state-0
   $:  %0
@@ -7,6 +7,7 @@
       :: pending tx:s 
       pending-m=(unit multisig)
       pending-p=(unit proposal)
+      :: optional pending ships 
   ==
 +$  card  card:agent:gall
 --
@@ -37,8 +38,9 @@
       (handle-poke:hc !<(action vase))
         %wallet-update
       (handle-wallet-update:hc !<(wallet-update:wallet vase))
+        %uqbar-share-address
+      (handle-address-share:hc !<(share-address:uqbar vase))
       ::
-      ::  share-address-poke, through khan thread?
     ==
   [cards this]
   --
@@ -67,11 +69,10 @@
     :: todo: if one of the addresses is ~, 
     :: poke ship to get theirs before creation
     ?>  =(src our):bowl
-    =/  members  
-      %+  murn  ~(tap by members.act)
-      |=  [addy=(unit address:smart) ship=(unit ship:smart)]
-      ?~  addy  ~
-      `addy
+    =/  addys
+      %+  turn  ~(tap by members.act)
+      |=  [=address:smart ship=(unit ship:smart)]
+      address
     ::
     =+  [name.act members.act ~ ~ 0x0]
     :_  state(pending-m `-)  :_  ~
@@ -84,7 +85,7 @@
             interface=~
             :+  %create
               threshold.act
-            (make-pset:smart members)
+            (make-pset:smart addys)
     ==  ==
   ::
       %propose
@@ -108,7 +109,7 @@
         [multisig.act calls - deadline.act]
       ::
       :-  %+  murn  ~(tap in members.m)
-        |=  [(unit @ux) ship=(unit ship)]
+        |=  [=address:smart ship=(unit ship)]
         ?~  ship  ~
         :-  ~
         :*  %pass   /poke-proposal
@@ -133,7 +134,7 @@
     ::  or use sequencer receipts.
     ?>  =(on-chain.act %.n)
     =+  %+  murn  ~(tap in members.m)
-      |=  [(unit @ux) ship=(unit ship)]
+      |=  [=address:smart ship=(unit ship)]
       ship
     ?~  (find ~[src.bowl] -)  !!  
     =+  (~(get by pending.m) (need hash.act))
@@ -214,9 +215,24 @@
     ::  empty names and deadlines?
     `state
   ::
-      %find-addy
-    :: route to khan. answer in on-arvo.
-    `state
+      %find-addys
+    ::  thread seems a bit unnecessary. 
+    ::  could also do no pending state, just updates to fe
+    ::  perhaps scry out address=>ship from social graph
+    :_  state
+    %+  murn  ~(tap in who.act)
+      |=  [addy=(unit address:smart) ship=(unit ship)]
+      ?:  ?&  =(~ addy)
+              ?!  =(~ ship)
+          ==
+        :: fix type propagation
+        :-  ~
+        :*  %pass   /uqbar-address-from-ship
+            %agent  [(need ship) %wallet]
+            %poke   uqbar-share-address+!>([%request %multisig])
+        ==
+      :: scry social graph
+      ~  
   ==
 ::
 ++  handle-wallet-update
@@ -309,6 +325,30 @@
           town
           [%noun noun]
   ==  ==
+::
+++  handle-address-share
+  |=  share=share-address:uqbar
+  ^-  (quip card _state)
+  :_  state  :_  ~
+  ?-    -.share
+      %request  !!
+      %deny
+    ::  surface this
+    :*  %give  %fact
+        ~[/updates]
+        %noun              :: multisig update
+        !>
+        [%denied src.bowl]
+    ==
+  ::
+      %share
+    :*  %give  %fact
+        ~[/updates]
+        %noun              :: multisig update
+        !>  
+        [%share src.bowl address.share]
+    ==
+  ==
 ::
 ++  fetch-member-addys
   |=  m=(set member)

@@ -14,7 +14,7 @@
       con=id
   ==
 ++  multisig-state  multisig-state:multisig-con ::  on-chain noun
-+$  member  (pair (unit address) (unit ship))
++$  member  (pair address (unit ship))
 ::
 +$  proposals  (map =hash =proposal)
 +$  sigs  (map address =sig)
@@ -31,11 +31,11 @@
 +$  action
   ::  need a load function, on- and off-chain versions of propose&vote, currently in the same method, mayb separate
   $%  [%create =address threshold=@ud members=(set member) name=@t]
+      [%find-addys who=(set (pair (unit address) (unit ship)))]
+      ::
       [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t]
       [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
       [%execute =address multisig=id =hash]
-      :: 
-      [%find-addy to=@p]
       ::  [%invite @p multisig=id]  poke entire thing to them..?
       [%load multisig=id name=@t]
   ==
