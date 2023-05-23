@@ -2,18 +2,18 @@
 :: 
 ::  deploy a multisig contract & data item
 /+  *zig-sys-smart
-/=  multisig-con  /con/lib/multisig
+/=  con  /con/lib/multisig
 /*  multisig-jam  %jam  /con/compiled/multisig/jam
 |%
-::
+::  off-chain
 +$  multisig  
   $:  name=@t
       members=(set member)  
+      threshold=@ud
       pending=proposals
       executed=(list hash)    :: storing specific on-chain tx data might lead to mismatches           
       con=id
   ==
-++  multisig-state  multisig-state:multisig-con ::  on-chain noun
 +$  member  (pair address (unit ship))
 ::
 +$  proposals  (map =hash =proposal)
@@ -32,14 +32,14 @@
   ::  need a load function, on- and off-chain versions of propose&vote, currently in the same method, mayb separate
   $%  [%create =address threshold=@ud members=(set member) name=@t]
       [%find-addys who=(set (pair (unit address) (unit ship)))]
-      ::
+      :: 
       [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t]
       [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
       [%execute =address multisig=id =hash]
       ::  [%invite @p multisig=id]  poke entire thing to them..?
       [%load multisig=id name=@t]
   ==
-+$  thread-update
++$  update
   $%  [%denied from=@p]
       [%shared from=@p address=@ux]
   ==

@@ -1,5 +1,5 @@
 /-  *multisig, indexer=zig-indexer, wallet=zig-wallet, uqbar=zig-uqbar
-/+  smart=zig-sys-smart, sig=zig-sig, merk, default-agent, dbug, io=agentio
+/+  smart=zig-sys-smart, sig=zig-sig, merk, default-agent, dbug, verb
 |%
 +$  state-0
   $:  %0
@@ -16,6 +16,7 @@
 =<
 %-  agent:dbug
 ^-  agent:gall
+%+  verb  &
 |_  =bowl:gall
 +*  this  .
     def   ~(. (default-agent this %.n) bowl)
@@ -65,16 +66,13 @@
   |=  act=action
   ^-  (quip card _state)
   ?-    -.act
-      %create
-    :: todo: if one of the addresses is ~, 
-    :: poke ship to get theirs before creation
     ?>  =(src our):bowl
     =/  addys
       %+  turn  ~(tap by members.act)
       |=  [=address:smart ship=(unit ship:smart)]
       address
     ::
-    =+  [name.act members.act ~ ~ 0x0]
+    =+  [name.act members.act threshold.act ~ ~ 0x0]
     :_  state(pending-m `-)  :_  ~
     %-  generate-tx
     :*  `[%multisig /create]  
@@ -89,9 +87,9 @@
     ==  ==
   ::
       %propose
-    =+  m=(~(got by multis) multisig.act)  :: revise got by
     =+  calls=;;((list call:smart) (cue calls.act))
     ?:  =(our src):bowl
+      =+  m=(~(got by multis) multisig.act)
       ?:  =(on-chain.act %.y)
         :: we are posting an on-chain proposal
         :_  state(pending-p `[name.act calls ~ ~ 0 0 0])  
@@ -111,6 +109,7 @@
       :-  %+  murn  ~(tap in members.m)
         |=  [=address:smart ship=(unit ship)]
         ?~  ship  ~
+        ?:  =(u.ship our.bowl)  ~
         :-  ~
         :*  %pass   /poke-proposal
             %agent  [u.ship %multisig]
@@ -133,6 +132,11 @@
     ::  could be on-chain but we should hear that from chain in that case
     ::  or use sequencer receipts.
     ?>  =(on-chain.act %.n)
+    ::  refactor, contemplate whether this edge case needs to be handled at all.
+    =/  m=multisig
+      ?~  mm=(~(get by multis) multisig.act)
+        (need (multisig-noun multisig.act))
+      (need mm)
     =+  %+  murn  ~(tap in members.m)
       |=  [=address:smart ship=(unit ship)]
       ship
@@ -184,35 +188,43 @@
       ::  especially for molding. should be doable, but a flag somewhere.
       ::  sign-message, then poke to ships.
       =/  prop=proposal  (~(got by pending.m) hash.act)
-      :: fix json
-      `state
+      :_  state  :_  ~
+      :*  %pass   /sign
+          %agent  [our.bowl %uqbar]
+          %poke   %wallet-poke
+          !>  ^-  wallet-poke:wallet
+          :*  %sign-typed-message
+            origin=`[%multisig /sign-vote/(scot %ux hash.act)]
+            from=address.act
+            domain=multisig.act
+            type=execute-json
+            :^    multisig.act 
+                calls.prop
+              (len-executed multisig.act) 
+            deadline.prop
+      ==  ==
+    ::  someone voted on an off-chain proposal and poked us 
     ?>  =(on-chain.act %.n)
-    ?~  sig.act  `state
+    ?~  sig.act  !!
     =/  prop=proposal  (~(got by pending.m) hash.act)
     =+  %-  shag:merk 
         :*  multisig.act 
-            (jam calls.prop) 
+            calls.prop 
             (need (len-executed multisig.act)) 
             deadline.prop
         ==
     ?>  (uqbar-validate:sig address.act - u.sig.act)
-    `state
+    :-  ~
+    =-  state(multis (~(put by multis) multisig.act -))
+    =-  m(pending (~(put by pending.m) hash.act -))
+    %=  prop
+      ayes  +(ayes.prop)  :: off-chain, check
+      sigs  (~(put by sigs.prop) address.act u.sig.act)
+    ==
   :: 
       %load
     ?>  =(our src):bowl
     ::  scry out multisig and add to our state/tracked
-    =/  up
-      .^  update:indexer  %gx
-        (scot %p our.bowl)  %uqbar  (scot %da now.bowl)
-        /indexer/newest/item/(scot %ux 0x0)/(scot %ux multisig.act)/noun
-      ==
-    ?>  ?=(%newest-item -.up)
-    =+  item=item.up
-    ?>  ?=(%.y -.item)
-    ::  fix
-    =/  m  ;;(multisig-state noun.p.item)
-    ::  format proposals, members, to be like off-chain state...
-    ::  empty names and deadlines?
     `state
   ::
       %find-addys
@@ -281,9 +293,11 @@
   ::
       %signed-message
     ?>  ?=(^ origin.update)
-    ?>  =([%multisig /sign-calls] u.origin.update)
-    ::
-    `state
+    ?+    q.u.origin.update  ~|("got receipt from weird origin" !!)
+        [%sign-vote @ ~]
+      ~&  "{<q.u.origin.update>}"
+      `state
+    ==
   ==
 ::
 ++  handle-scry
@@ -301,17 +315,59 @@
 ::
 ++  len-executed
   |=  =id:smart
+  ?~  noun=(multisig-noun id)
+    ~
+  `(lent executed:(need noun))
+::
+++  multisig-noun
+  ::  scry the on-chain noun, and merge/mold to off-chain one.
+  |=  =id:smart
+  ^-  (unit multisig)
   =/  up
     .^  update:indexer  %gx
       (scot %p our.bowl)  %uqbar  (scot %da now.bowl)
       /indexer/newest/item/(scot %ux 0x0)/(scot %ux id)/noun
     ==
   ?~  up  ~
-  ?>  ?=(%newest-item -.up)  :: return ~ on fail
+  ?>  ?=(%newest-item -.up)
   =+  item=item.up
   ?>  ?=(%.y -.item)
-  `(lent executed:;;(multisig-state noun.p.item))
+  ?>  =(%multisig label.p.item)
+  =+  on=;;(multisig-state:con noun.p.item)
+  ?~  off=(~(get by multis) id)
+    :-  ~
+    :*  'default multisig name'             :: fix
+        (members-to-off members.on)
+        threshold.on
+        pending=(props-to-off pending.on)
+        executed=executed.on
+        source.p.item
+    ==
+  off  :: update merge from on-chain values?
 ::
+++  members-to-off
+  |=  m=(pset address:smart)
+  ^-  (set member)
+  %-  silt
+  %+  turn  ~(tap pn m)
+    |=  =address:smart
+    [address ~]
+::
+++  props-to-off
+  |=  on=(pmap:smart @ux proposal:multisig-state:con)
+  ^-  (map hash:smart proposal)
+  %-  malt
+  %+  turn  ~(tap pn on)
+    |=  [hash=@ux p=proposal:multisig-state:con]
+    :-  hash
+    :*  'default proposal name'             :: fix
+        calls.p
+        votes.p
+        sigs=~
+        0
+        ayes.p
+        nays.p
+    ==   
 ++  generate-tx
   |=  [=origin:wallet from=@ux con=@ux town=@ux noun=*] 
   :*  %pass   /execute
@@ -349,8 +405,4 @@
         [%share src.bowl address.share]
     ==
   ==
-::
-++  fetch-member-addys
-  |=  m=(set member)
-  ~
 --
