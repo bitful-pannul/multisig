@@ -1,5 +1,5 @@
 /-  *multisig, indexer=zig-indexer, wallet=zig-wallet
-/+  smart=zig-sys-smart, sig=zig-sig, default-agent, dbug
+/+  smart=zig-sys-smart, sig=zig-sig, merk, default-agent, dbug
 |%
 +$  state-0
   $:  %0
@@ -64,35 +64,28 @@
   ^-  (quip card _state)
   ?-    -.act
       %create
-    :: todo: if one of the addresses is ~, poke ship to get theirs before creation
+    :: todo: if one of the addresses is ~, 
+    :: poke ship to get theirs before creation
     ?>  =(src our):bowl
     =/  members  
       %+  murn  ~(tap by members.act)
       |=  [addy=(unit address:smart) ship=(unit ship:smart)]
-      ?~  addy  ~  :: add a poke if ship exists
+      ?~  addy  ~
       `addy
     ::
     =+  [name.act members.act ~ ~ 0x0]
     :_  state(pending-m `-)  :_  ~
-    :*  %pass   /create-multisig
-        %agent  [our.bowl %uqbar]
-        %poke   %wallet-poke
-        !>  ^-  wallet-poke:wallet
-        :*  %transaction
-            origin=`[%multisig /create]
-            from=address.act
-            contract=publish-contract
-            town=0x0
-            :-  %noun
-            :*  %deploy-and-init
-                ::  hmm mutable, choose and inform users
-                mutable=%.n
-                multisig-code
-                interface=~
-                :+  %create
-                  threshold.act
-                (make-pset:smart members)
-    ==  ==  ==
+    %-  generate-tx
+    :*  `[%multisig /create]  
+        address.act  publish-contract  0x0
+        :*  %deploy-and-init  
+            mutable=%.n     :: check
+            multisig-code
+            interface=~
+            :+  %create
+              threshold.act
+            (make-pset:smart members)
+    ==  ==
   ::
       %propose
     =+  m=(~(got by multis) multisig.act)  :: revise got by
@@ -102,20 +95,11 @@
         :: we are posting an on-chain proposal
         :_  state(pending-p `[name.act calls ~ ~ 0 0 0])  
         :_  ~
-        :*  %pass   /create-proposal
-            %agent  [our.bowl %uqbar]
-            %poke   %wallet-poke
-            !>  ^-  wallet-poke:wallet
-            :*  %transaction
-                origin=`[%multisig /create-proposal]
-                from=address.act
-                contract=con.m
-                town=0x0
-                :-  %noun
-                :+  %propose
-                  multisig.act
-                calls
-        ==  ==
+        %-  generate-tx 
+        :*  `[%multisig /create-proposal]  
+             address.act  con.m  0x0
+             [%propose multisig.act calls]
+        ==
       ::  off-chain proposal, poke ships 
       =+  (need (len-executed multisig.act))
       =/  typed-message  
@@ -123,7 +107,7 @@
           execute-jold-hash
         [multisig.act calls - deadline.act]
       ::
-      =+  %+  murn  ~(tap in members.m)
+      :-  %+  murn  ~(tap in members.m)
         |=  [(unit @ux) ship=(unit ship)]
         ?~  ship  ~
         :-  ~
@@ -140,7 +124,6 @@
                 deadline.act
                 name.act
         ==  ==
-      :-  -
       =-  state(multis (~(put by multis) multisig.act -))
       =-  m(pending (~(put by pending.m) (shag:merk typed-message) -))
       ^-  proposal
@@ -167,22 +150,17 @@
     ::  optional, veriff sigs off-chain...?
     :_  state ::  add pending
     :_  ~
-    :*  %pass   /execute
-        %agent  [our.bowl %uqbar]
-        %poke   %wallet-poke
-        !>  ^-  wallet-poke:wallet
-        :*  %transaction
-            origin=`[%multisig /execute]
-            from=address.act
-            contract=con.m
-            town=0x0
-            :-  %noun
-            :*  %execute
-                multisig.act
-                sigs.prop
-                calls.prop
-                deadline.prop
-    ==  ==  ==
+    %-  generate-tx
+    :*  `[%multisig /execute]
+        from=address.act
+        contract=con.m
+        town=0x0
+        :*  %execute
+            multisig.act
+            sigs.prop
+            calls.prop
+            deadline.prop
+    ==  ==  
   ::
       %vote
     =+  m=(~(got by multis) multisig.act)
@@ -191,24 +169,21 @@
         ::  pending or just wait for batch
         :_  state
         :_  ~
-        :*  %pass   /vote
-            %agent  [our.bowl %uqbar]
-            %poke   %wallet-poke
-            !>  ^-  wallet-poke:wallet
-            :*  %transaction
-                origin=`[%multisig /create-vote]
-                from=address.act
-                contract=con.m
-                town=0x0
-                :-  %noun
-                :*  %vote
-                    multisig.act
-                    hash.act
-        ==  ==  ==
+        %-  generate-tx
+        :*  `[%multisig /create-vote]
+            from=address.act
+            contract=con.m
+            town=0x0
+            :+  %vote
+              multisig.act
+            hash.act
+        ==
       ::  vote on off-chain proposal. 
       ::  note: need a divide between off and on-chain data.
       ::  especially for molding. should be doable, but a flag somewhere.
       ::  sign-message, then poke to ships.
+      =/  prop=proposal  (~(got by pending.m) hash.act)
+      :: fix json
       `state
     ?>  =(on-chain.act %.n)
     ?~  sig.act  `state
@@ -235,9 +210,6 @@
     ?>  ?=(%.y -.item)
     ::  fix
     =/  m  ;;(multisig-state noun.p.item)
-    =/  members  %+  turn  ~(tap in members.m)
-        |=  =address
-        [`address ~]
     ::  format proposals, members, to be like off-chain state...
     ::  empty names and deadlines?
     `state
@@ -297,6 +269,7 @@
     ::
     `state
   ==
+::
 ++  handle-scry
   |=  =path
   ^-  (unit (unit cage))
@@ -309,6 +282,7 @@
     =/  multi  (~(get by multis) id)
     ``noun+!>(~)
   ==
+::
 ++  len-executed
   |=  =id:smart
   =/  up
@@ -321,4 +295,22 @@
   =+  item=item.up
   ?>  ?=(%.y -.item)
   `(lent executed:;;(multisig-state noun.p.item))
+::
+++  generate-tx
+  |=  [=origin:wallet from=@ux con=@ux town=@ux noun=*] 
+  :*  %pass   /execute
+      %agent  [our.bowl %uqbar]
+      %poke   %wallet-poke
+      !>  ^-  wallet-poke:wallet
+      :*  %transaction
+          origin
+          from
+          con
+          town
+          [%noun noun]
+  ==  ==
+::
+++  fetch-member-addys
+  |=  m=(set member)
+  ~
 --

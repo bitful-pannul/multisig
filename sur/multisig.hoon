@@ -48,23 +48,23 @@
 ++  multisig-code  [- +]:(cue multisig-jam)
 ++  publish-contract  0x1111.1111
 ++  execute-jold-hash  0x1bdb.45ec.612a.7371.4ce8.f462.0108.5ab7
-::  ++  execute-json  can't find de:json:html or de-json:html????????
-::    %-  need
-::    %-  de:json:html
-::    ^-  cord
-::    '''
-::    [
-::      {"multisig": "ux"},
-::      {"calls": [
-::        "list",
-::        [
-::          {"contract": "ux"},
-::          {"town": "ux"},
-::          {"calldata": [{"p": "tas"}, {"q": "*"}]}
-::        ]
-::      ]},
-::      {"nonce": "ud"},
-::      {"deadline": "ud"}
-::    ]
-::    '''
+++  execute-json
+  %-  need
+  %-  de-json:^html
+  ^-  cord
+  '''
+  [
+    {"multisig": "ux"},
+    {"calls": [
+      "list",
+      [
+        {"contract": "ux"},
+        {"town": "ux"},
+        {"calldata": [{"p": "tas"}, {"q": "*"}]}
+      ]
+    ]},
+    {"nonce": "ud"},
+    {"deadline": "ud"}
+  ]
+  '''
 --
