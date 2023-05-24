@@ -1,43 +1,40 @@
-::  multisig gall app
+::  multisig gall app [UQ | DAO]
 :: 
 ::  deploy a multisig contract & data item
+::
+::  off-chain and on-chain data live separately,
+::  but are connected by proposal hashes. 
+::
 /+  *zig-sys-smart
-/=  con  /con/lib/multisig
+/=  con  /con/lib/multisig  :: on-chain types in con
 /*  multisig-jam  %jam  /con/compiled/multisig/jam
 |%
-::  off-chain
+::  off-chain [ALL]
 +$  multisig  
   $:  name=@t
-      members=(set member)  
-      threshold=@ud
+      ships=(set ship)
       pending=proposals
-      executed=(list hash)    :: storing specific on-chain tx data might lead to mismatches           
-      con=id
   ==
-+$  member  (pair address (unit ship))
-::
 +$  proposals  (map =hash =proposal)
-+$  sigs  (map address =sig)
 ::
 +$  proposal
   $:  name=@t
+      desc=@t
       calls=(list call)
-      votes=(map address ?)
       =sigs
       deadline=@ud
-      ayes=@ud
-      nays=@ud
   ==
++$  sigs  (map address =sig)
 +$  action
-  ::  need a load function, on- and off-chain versions of propose&vote, currently in the same method, mayb separate
-  $%  [%create =address threshold=@ud members=(set member) name=@t]
-      [%find-addys who=(set (pair (unit address) (unit ship)))]
+  $%  [%create =address threshold=@ud ships=(set ship) members=(set address) name=@t]
+      [%find-addys ships=(set ship)]
       :: 
-      [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t]
+      [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t desc=@t]
       [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
       [%execute =address multisig=id =hash]
-      ::  [%invite @p multisig=id]  poke entire thing to them..?
+      ::  todo: add accepting/rejecting flow
       [%load multisig=id name=@t]
+      [%share multisig=id state=(unit multisig) ship=(unit ship)]
   ==
 +$  update
   $%  [%denied from=@p]

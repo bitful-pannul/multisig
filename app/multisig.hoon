@@ -3,11 +3,11 @@
 |%
 +$  state-0
   $:  %0
-      multis=(map @ux multisig)
+      on=(map @ux multisig-state:con)
+      off=(map @ux multisig)
       :: pending tx:s 
       pending-m=(unit multisig)
       pending-p=(unit proposal)
-      :: optional pending ships 
   ==
 +$  card  card:agent:gall
 --
@@ -66,13 +66,9 @@
   |=  act=action
   ^-  (quip card _state)
   ?-    -.act
+      %create
     ?>  =(src our):bowl
-    =/  addys
-      %+  turn  ~(tap by members.act)
-      |=  [=address:smart ship=(unit ship:smart)]
-      address
-    ::
-    =+  [name.act members.act threshold.act ~ ~ 0x0]
+    =+  [name.act ships.act ~]
     :_  state(pending-m `-)  :_  ~
     %-  generate-tx
     :*  `[%multisig /create]  
@@ -83,39 +79,39 @@
             interface=~
             :+  %create
               threshold.act
-            (make-pset:smart addys)
+            ::  b careful with putting psets on chain! noun can be *broken*
+            (make-pset:smart ~(tap in members.act))
     ==  ==
   ::
       %propose
     =+  calls=;;((list call:smart) (cue calls.act))
     ?:  =(our src):bowl
-      =+  m=(~(got by multis) multisig.act)
       ?:  =(on-chain.act %.y)
         :: we are posting an on-chain proposal
-        :_  state(pending-p `[name.act calls ~ ~ 0 0 0])  
+        :_  state
         :_  ~
         %-  generate-tx 
-        :*  `[%multisig /create-proposal]  
-             address.act  con.m  0x0
+        ::  revise if passing a path with jammed calls is a good idea
+        :*  `[%multisig /create-proposal/(scot %ud calls.act)]  
+             address.act  source:(need (multisig-item multisig.act))  0x0
              [%propose multisig.act calls]
         ==
       ::  off-chain proposal, poke ships 
-      =+  (need (len-executed multisig.act))
+      =+  m=(~(got by off) multisig.act)
       =/  typed-message  
         :+  multisig.act
           execute-jold-hash
-        [multisig.act calls - deadline.act]
+        [multisig.act calls (need (len-executed multisig.act)) deadline.act]
       ::
-      :-  %+  murn  ~(tap in members.m)
-        |=  [=address:smart ship=(unit ship)]
-        ?~  ship  ~
-        ?:  =(u.ship our.bowl)  ~
+      :-  %+  murn  ~(tap in ships.m)
+        |=  =ship
+        ?:  =(ship our.bowl)  ~
         :-  ~
         :*  %pass   /poke-proposal
-            %agent  [u.ship %multisig]
+            %agent  [ship %multisig]
             %poke   %multisig-action
             !>  ^-  action
-            :*  %propose     :: define forwarding abstract logic 
+            :*  %propose  
                 address.act
                 multisig.act
                 calls.act
@@ -123,42 +119,38 @@
                 `(shag:merk typed-message)
                 deadline.act
                 name.act
+                desc.act
         ==  ==
-      =-  state(multis (~(put by multis) multisig.act -))
+      =-  state(off (~(put by off) multisig.act -))
       =-  m(pending (~(put by pending.m) (shag:merk typed-message) -))
       ^-  proposal
-      [name.act calls ~ ~ deadline.act 0 0]
+      [name.act desc.act calls ~ deadline.act]
     ::  someone is poking us with off-chain proposal,  
     ::  could be on-chain but we should hear that from chain in that case
     ::  or use sequencer receipts.
     ?>  =(on-chain.act %.n)
-    ::  refactor, contemplate whether this edge case needs to be handled at all.
-    =/  m=multisig
-      ?~  mm=(~(get by multis) multisig.act)
-        (need (multisig-noun multisig.act))
-      (need mm)
-    =+  %+  murn  ~(tap in members.m)
-      |=  [=address:smart ship=(unit ship)]
-      ship
-    ?~  (find ~[src.bowl] -)  !!  
+    ::  todo: scry unknown multisig from chain, add off chain data later?
+    ::  or  poke back, ask for multisig first. receive, then get proposal. 
+    =+  m=(~(got by off) multisig.act)
+    :: what if my off-chain ships are outdated?
+    ?>  (~(has in ships.m) src.bowl)  
     =+  (~(get by pending.m) (need hash.act))
     ?^  -  `state  :: already have a pending proposal with that hash..   
-    ::  verify sigs timepoint wen
-    =-  `state(multis (~(put by multis) multisig.act -))
+    =-  `state(off (~(put by off) multisig.act -))
     =-  m(pending (~(put by pending.m) (need hash.act) -))
-    [name.act calls ~ ~ deadline.act 0 0]
+    [name.act desc.act calls ~ deadline.act]
   :: 
       %execute
     ?>  =(our src):bowl
-    =+  m=(~(got by multis) multisig.act)
+    =+  m=(~(got by off) multisig.act)
     =/  prop=proposal  (~(got by pending.m) hash.act)
     ::  optional, veriff sigs off-chain...?
     :_  state ::  add pending
     :_  ~
     %-  generate-tx
-    :*  `[%multisig /execute]
+    :*  `[%multisig /execute/(scot %ux hash.act)]
         from=address.act
-        contract=con.m
+        contract=source:(need (multisig-item multisig.act))
         town=0x0
         :*  %execute
             multisig.act
@@ -168,25 +160,24 @@
     ==  ==  
   ::
       %vote
-    =+  m=(~(got by multis) multisig.act)
     ?:  =(our src):bowl
       ?:  =(on-chain.act %.y)
-        ::  pending or just wait for batch
+        ::  just wait for batch
         :_  state
         :_  ~
         %-  generate-tx
-        :*  `[%multisig /create-vote]
+        :*  `[%multisig /create-vote/(scot %ux hash.act)/(scot %ud aye.act)]
             from=address.act
-            contract=con.m
+            contract=source:(need (multisig-item multisig.act))
             town=0x0
-            :+  %vote
-              multisig.act
-            hash.act
+            :^    %vote
+                multisig.act
+              hash.act
+            aye.act
         ==
       ::  vote on off-chain proposal. 
-      ::  note: need a divide between off and on-chain data.
-      ::  especially for molding. should be doable, but a flag somewhere.
       ::  sign-message, then poke to ships.
+      =+  m=(~(got by off) multisig.act)
       =/  prop=proposal  (~(got by pending.m) hash.act)
       :_  state  :_  ~
       :*  %pass   /sign
@@ -194,57 +185,83 @@
           %poke   %wallet-poke
           !>  ^-  wallet-poke:wallet
           :*  %sign-typed-message
-            origin=`[%multisig /sign-vote/(scot %ux hash.act)]
+            :-  ~  :-  %multisig
+            ::  add =-  to path somehow 
+            /sign-vote/(scot %ux multisig.act)/(scot %ux hash.act)/(scot %ux address.act)
             from=address.act
             domain=multisig.act
             type=execute-json
             :^    multisig.act 
                 calls.prop
-              (len-executed multisig.act) 
+              (need (len-executed multisig.act))
             deadline.prop
       ==  ==
     ::  someone voted on an off-chain proposal and poked us 
     ?>  =(on-chain.act %.n)
+    =+  m=(~(got by off) multisig.act)
     ?~  sig.act  !!
     =/  prop=proposal  (~(got by pending.m) hash.act)
     =+  %-  shag:merk 
         :*  multisig.act 
             calls.prop 
-            (need (len-executed multisig.act)) 
+            (need (len-executed multisig.act))
             deadline.prop
         ==
     ?>  (uqbar-validate:sig address.act - u.sig.act)
     :-  ~
-    =-  state(multis (~(put by multis) multisig.act -))
+    =-  state(off (~(put by off) multisig.act -))
     =-  m(pending (~(put by pending.m) hash.act -))
     %=  prop
-      ayes  +(ayes.prop)  :: off-chain, check
       sigs  (~(put by sigs.prop) address.act u.sig.act)
     ==
   :: 
       %load
     ?>  =(our src):bowl
     ::  scry out multisig and add to our state/tracked
-    `state
+    =+  noun=(multisig-noun multisig.act)
+    :-  ~
+    ?~  noun  state
+    state(on (~(put by on) multisig.act u.noun))
+  ::
+      %share
+    ?:  =(our src):bowl
+      :: include %load from on-chain? or keep separate
+      :_  state  :_  ~
+      :*  %pass   /request
+          %agent  [(need ship.act) %multisig]
+          %poke   %multisig-action
+          !>([%share multisig.act ~ ~])
+      ==
+    ?^  state.act
+      ::  someone updating us
+      ::  check for collisions?
+      :-  ~
+      state(off (~(put by off) multisig.act u.state.act))
+    ::  someone asking us
+    =+  multi=(~(get by off) multisig.act)
+    ?~  multi  `state
+    :_  =-  state(off (~(put by off) multisig.act -))
+        u.multi(ships (~(put in ships.u.multi) src.bowl))
+    :_  ~
+    :*  %pass   /share
+        %agent  [src.bowl %multisig]
+        %poke   %multisig-action
+        !>([%share multisig.act multi ~])  :: src.bowl not in ships, fix
+    ==
   ::
       %find-addys
     ::  thread seems a bit unnecessary. 
     ::  could also do no pending state, just updates to fe
     ::  perhaps scry out address=>ship from social graph
     :_  state
-    %+  murn  ~(tap in who.act)
-      |=  [addy=(unit address:smart) ship=(unit ship)]
-      ?:  ?&  =(~ addy)
-              ?!  =(~ ship)
-          ==
-        :: fix type propagation
-        :-  ~
-        :*  %pass   /uqbar-address-from-ship
-            %agent  [(need ship) %wallet]
-            %poke   uqbar-share-address+!>([%request %multisig])
-        ==
-      :: scry social graph
-      ~  
+    %+  murn  ~(tap in ships.act)
+      |=  =ship
+      ?:  =(ship our.bowl)  ~
+      :-  ~
+      :*  %pass   /uqbar-address-from-ship
+          %agent  [ship %wallet]
+          %poke   uqbar-share-address+!>([%request %multisig])
+      == 
   ==
 ::
 ++  handle-wallet-update
@@ -252,9 +269,11 @@
   ^-  (quip card _state)
   ?+    -.update  `state
       %sequencer-receipt
+    ::  Q: should we populate on-chain data here too?
     ?>  ?=(^ origin.update)
-    ?+    q.u.origin.update  ~|("got receipt from weird origin" !!)
-        [%create ~]      
+    ~&  "origin!: {<u.origin.update>}"
+    ?+    q.u.origin.update  !!
+        [%create ~]
       ?.  =(%0 errorcode.output.update)
         `state(pending-m ~)
       ::  look for %multisig label, fetch contract from it.
@@ -263,7 +282,7 @@
       =/  modified=(list item:smart)  
         (turn ~(val by modified.output.update) tail)
       ::  
-      =|  ids=(unit [data=id:smart con=id:smart]) 
+      =|  ids=(unit [data=id:smart con=id:smart threshold=@ud members=(pset address:smart)]) 
       =.  ids
         |-  ^+  ids
         ?~  modified  ~
@@ -273,43 +292,73 @@
                 ::  additional possible checks? accidental other multisig here in batch?
             ==
             $(modified t.modified)
-        `[id.p.item source.p.item]
+        =+  ;;(multisig-state:con noun.p.item)
+        `[id.p.item source.p.item threshold.- members.-]
       ?~  ids  `state
-      ::
-      =/  new  u.pending-m(con con.u.ids)
-      :_  state(multis (~(put by multis) data.u.ids new), pending-m ~)
-      ~
+      :-  ~
+      %=  state
+        off       (~(put by off) data.u.ids u.pending-m)
+        on        (~(put by on) data.u.ids [members.u.ids threshold.u.ids ~ ~])
+        pending-m  ~
+      ==
     ::
-        [%create-proposal ~]
+        [%create-proposal @ ~]
+      ?.  =(%0 errorcode.output.update)
+        `state(pending-m ~)
+      ::  
       `state
     ::  
-        [%create-vote ~]
+        [%create-vote @ @ ~]
       `state
     ::  
-        [%execute ~]
-      :: only one that's exclusively off-chain
+        [%execute @ ~]
       `state
     ==
   ::
       %signed-message
     ?>  ?=(^ origin.update)
-    ?+    q.u.origin.update  ~|("got receipt from weird origin" !!)
-        [%sign-vote @ ~]
-      ~&  "{<q.u.origin.update>}"
-      `state
+    ::  remove ?+
+    ?+    q.u.origin.update  !!
+        [%sign-vote @ @ @ ~]   :: typed paths how
+      =+  id=(slav %ux i.t.q.u.origin.update)
+      =+  hash=(slav %ux i.t.t.q.u.origin.update)
+      =+  address=(slav %ux i.t.t.t.q.u.origin.update)
+      ::  note nesting =+  in =/  don't work
+      =/  =multisig  (~(got by off) id)
+      =/  =proposal  (~(got by pending.multisig) hash)
+      ::
+      :_  =-  state(off (~(put by off) id -))
+          =-  multisig(pending (~(put by pending.multisig) hash -))
+              proposal(sigs (~(put by sigs.proposal) address sig.update))
+      %+  murn  ~(tap in ships.multisig)
+        |=  =ship
+        ?:  =(our.bowl ship)  ~
+        :-  ~
+        :*  %pass   /vote
+            %agent  [ship %multisig]
+            %poke   %multisig-action
+            !>  ^-  action
+            :*  %vote
+                address
+                id
+                hash
+                %.y
+                %.n
+                `sig.update
+        ==  ==
     ==
   ==
 ::
 ++  handle-scry
   |=  =path
   ^-  (unit (unit cage))
-  ?+    path  ~|("unexpected scry into {<dap.bowl>} on path {<path>}" !!)
+  ?+    path  !!
       [%x %multisigs ~]
     ``noun+!>(~)
   :: 
       [%x %multisig @ ~]
     =/  id  (slav %ux i.t.t.path)
-    =/  multi  (~(get by multis) id)
+    =/  multi  (~(get by on) id)
     ``noun+!>(~)
   ==
 ::
@@ -319,10 +368,9 @@
     ~
   `(lent executed:(need noun))
 ::
-++  multisig-noun
-  ::  scry the on-chain noun, and merge/mold to off-chain one.
+++  multisig-item
   |=  =id:smart
-  ^-  (unit multisig)
+  ^-  (unit data:smart)
   =/  up
     .^  update:indexer  %gx
       (scot %p our.bowl)  %uqbar  (scot %da now.bowl)
@@ -333,41 +381,14 @@
   =+  item=item.up
   ?>  ?=(%.y -.item)
   ?>  =(%multisig label.p.item)
-  =+  on=;;(multisig-state:con noun.p.item)
-  ?~  off=(~(get by multis) id)
-    :-  ~
-    :*  'default multisig name'             :: fix
-        (members-to-off members.on)
-        threshold.on
-        pending=(props-to-off pending.on)
-        executed=executed.on
-        source.p.item
-    ==
-  off  :: update merge from on-chain values?
+  `+.item
 ::
-++  members-to-off
-  |=  m=(pset address:smart)
-  ^-  (set member)
-  %-  silt
-  %+  turn  ~(tap pn m)
-    |=  =address:smart
-    [address ~]
-::
-++  props-to-off
-  |=  on=(pmap:smart @ux proposal:multisig-state:con)
-  ^-  (map hash:smart proposal)
-  %-  malt
-  %+  turn  ~(tap pn on)
-    |=  [hash=@ux p=proposal:multisig-state:con]
-    :-  hash
-    :*  'default proposal name'             :: fix
-        calls.p
-        votes.p
-        sigs=~
-        0
-        ayes.p
-        nays.p
-    ==   
+++  multisig-noun
+  |=  =id:smart
+  ^-  (unit multisig-state:con)
+  =+  (need (multisig-item id))
+  `;;(multisig-state:con noun.-)
+::  
 ++  generate-tx
   |=  [=origin:wallet from=@ux con=@ux town=@ux noun=*] 
   :*  %pass   /execute
