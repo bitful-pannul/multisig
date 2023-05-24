@@ -8,7 +8,6 @@
       :: pending tx:s 
       pending-m=(unit multisig)
       pending-p=(unit proposal)
-      :: optional pending ships 
   ==
 +$  card  card:agent:gall
 --
@@ -80,7 +79,7 @@
             interface=~
             :+  %create
               threshold.act
-            (make-pset:smart ~(tap in members.act)) :: check !!!
+            (make-pset:smart ~(tap in members.act))
     ==  ==
   ::
       %propose
@@ -88,10 +87,11 @@
     ?:  =(our src):bowl
       ?:  =(on-chain.act %.y)
         :: we are posting an on-chain proposal
-        :_  state  ::  (pending-p `[name.act calls ~ ~ 0 0 0])  
+        :_  state
         :_  ~
         %-  generate-tx 
-        :*  `[%multisig /create-proposal]  
+        ::  revise if passing a path with jammed calls is a good idea
+        :*  `[%multisig /create-proposal/(scot %ud calls.act)]  
              address.act  source:(need (multisig-item multisig.act))  0x0
              [%propose multisig.act calls]
         ==
@@ -147,9 +147,9 @@
     :_  state ::  add pending
     :_  ~
     %-  generate-tx
-    :*  `[%multisig /execute]
+    :*  `[%multisig /execute/(scot %ux hash.act)]
         from=address.act
-        contract=0x0 :: source.p:(need (multisig-item multisig.act))
+        contract=source:(need (multisig-item multisig.act))
         town=0x0
         :*  %execute
             multisig.act
@@ -165,13 +165,14 @@
         :_  state
         :_  ~
         %-  generate-tx
-        :*  `[%multisig /create-vote]
+        :*  `[%multisig /create-vote/(scot %ux hash.act)/(scot %ud aye.act)]
             from=address.act
-            contract=0x0  ::  source.p:(need multisig-item multisig.act))
+            contract=source:(need (multisig-item multisig.act))
             town=0x0
-            :+  %vote
-              multisig.act
-            hash.act
+            :^    %vote
+                multisig.act
+              hash.act
+            aye.act
         ==
       ::  vote on off-chain proposal. 
       ::  note: need a divide between off and on-chain data. !! 
@@ -215,8 +216,32 @@
       %load
     ?>  =(our src):bowl
     ::  scry out multisig and add to our state/tracked
-    ::  or poke a ship, request new state
-    `state
+    =+  noun=(multisig-noun multisig.act)
+    :-  ~
+    ?~  noun  state
+    state(on (~(put by on) multisig.act u.noun))
+  ::
+      %share
+    ?:  =(our src):bowl
+      :: include %load from on-chain? or keep separate
+      :_  state  :_  ~
+      :*  %pass   /request
+          %agent  [(need ship.act) %multisig]
+          %poke   %multisig-action
+          !>([%share multisig.act ~ ~])
+      ==
+    ::  someone asking us, add accept flow, add to ships?
+    =+  multi=(~(get by off) multisig.act)
+    ::  need poke-store for memory-pressure too
+    ?~  multi  `state
+    :_  =-  state(off (~(put by off) multisig.act -))
+        u.multi(ships (~(put in ships.u.multi) src.bowl))
+    :_  ~
+    :*  %pass   /share
+        %agent  [src.bowl %multisig]
+        %poke   %multisig-action
+        !>([%share multisig.act u.multi ~])  :: src.bowl not in ships, fix
+    ==
   ::
       %find-addys
     ::  thread seems a bit unnecessary. 
@@ -238,11 +263,10 @@
   ^-  (quip card _state)
   ?+    -.update  `state
       %sequencer-receipt
+    ::  Q: should we populate on-chain data here too?
     ?>  ?=(^ origin.update)
     ?+    q.u.origin.update  ~|("got receipt from weird origin" !!)
         [%create ~]
-      ::  testing, this only populates off-chain data.
-      ::  members, threshold are put into on-chain state upon-batch.     
       ?.  =(%0 errorcode.output.update)
         `state(pending-m ~)
       ::  look for %multisig label, fetch contract from it.
@@ -270,20 +294,20 @@
         on   (~(put by on) data.u.ids [members.u.ids threshold.u.ids ~ ~])
       ==
     ::
-        [%create-proposal ~]
+        [%create-proposal @ ~]
       `state
     ::  
-        [%create-vote ~]
+        [%create-vote @ @ ~]
       `state
     ::  
-        [%execute ~]
-      :: only one that's exclusively off-chain
+        [%execute @ ~]
       `state
     ==
   ::
       %signed-message
     ?>  ?=(^ origin.update)
-    ?+    q.u.origin.update  ~|("got receipt from weird origin" !!)
+    ::  remove ?+
+    ?+    q.u.origin.update  !!
         [%sign-vote @ ~]
       ~&  "{<q.u.origin.update>}"
       `state
@@ -293,7 +317,7 @@
 ++  handle-scry
   |=  =path
   ^-  (unit (unit cage))
-  ?+    path  ~|("unexpected scry into {<dap.bowl>} on path {<path>}" !!)
+  ?+    path  !!
       [%x %multisigs ~]
     ``noun+!>(~)
   :: 
@@ -325,7 +349,6 @@
   `+.item
 ::
 ++  multisig-noun
-  ::  scry the on-chain noun, and merge/mold to off-chain one.
   |=  =id:smart
   ^-  (unit multisig-state:con)
   =+  (need (multisig-item id))

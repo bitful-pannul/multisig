@@ -3,8 +3,8 @@
 ::  deploy a multisig contract & data item
 ::
 ::  off-chain and on-chain data live separately,
-::  but are connected by proposal hashes. This prevents conflicts. 
-::  note, all multisig contracts (currently) have the same address.
+::  but are connected by proposal hashes. 
+::
 /+  *zig-sys-smart
 /=  con  /con/lib/multisig  :: on-chain types in con
 /*  multisig-jam  %jam  /con/compiled/multisig/jam
@@ -26,16 +26,15 @@
   ==
 +$  sigs  (map address =sig)
 +$  action
-  ::  need a load function, on- and off-chain versions of propose&vote, currently in the same method, mayb separate
-  ::  now separate testing
   $%  [%create =address threshold=@ud ships=(set ship) members=(set address) name=@t]
       [%find-addys ships=(set ship)]
       :: 
       [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t desc=@t]
       [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
       [%execute =address multisig=id =hash]
-      ::  [%invite @p multisig=id]  poke entire thing to them..?
-      [%load multisig=id name=@t]  :: src=@p?
+      ::  todo: add accepting/rejecting flow
+      [%load multisig=id name=@t]
+      [%share multisig=id state=(unit multisig) ship=(unit ship)]
   ==
 +$  update
   $%  [%denied from=@p]
