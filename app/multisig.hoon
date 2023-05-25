@@ -1,5 +1,5 @@
 /-  *multisig, indexer=zig-indexer, wallet=zig-wallet, uqbar=zig-uqbar
-/+  smart=zig-sys-smart, sig=zig-sig, merk, default-agent, dbug, verb
+/+  sig=zig-sig, merk, eng=zig-sys-engine, default-agent, dbug, verb
 |%
 +$  state-0
   $:  %0
@@ -7,7 +7,8 @@
       off=(map @ux multisig)
       :: pending tx:s 
       pending-m=(unit multisig)
-      pending-p=(unit proposal)
+      :: pending-p=(unit proposal), not needed for on-chain, 
+      :: might need for off-chain if we're going to do automatic vote upon proposal
   ==
 +$  card  card:agent:gall
 --
@@ -80,19 +81,18 @@
             :+  %create
               threshold.act
             ::  b careful with putting psets on chain! noun can be *broken*
-            (make-pset:smart ~(tap in members.act))
+            (make-pset ~(tap in members.act))
     ==  ==
   ::
       %propose
-    =+  calls=;;((list call:smart) (cue calls.act))
+    =+  calls=;;((list call) (cue calls.act))
     ?:  =(our src):bowl
       ?:  =(on-chain.act %.y)
         :: we are posting an on-chain proposal
         :_  state
         :_  ~
         %-  generate-tx 
-        ::  revise if passing a path with jammed calls is a good idea
-        :*  `[%multisig /create-proposal/(scot %ud calls.act)]  
+        :*  `[%multisig /create-proposal/(scot %ux multisig.act)]
              address.act  source:(need (multisig-item multisig.act))  0x0
              [%propose multisig.act calls]
         ==
@@ -103,6 +103,7 @@
           execute-jold-hash
         [multisig.act calls (need (len-executed multisig.act)) deadline.act]
       ::
+      =+  hash=(shag:merk typed-message)
       :-  %+  murn  ~(tap in ships.m)
         |=  =ship
         ?:  =(ship our.bowl)  ~
@@ -116,13 +117,13 @@
                 multisig.act
                 calls.act
                 %.n
-                `(shag:merk typed-message)
+                `hash
                 deadline.act
                 name.act
                 desc.act
         ==  ==
       =-  state(off (~(put by off) multisig.act -))
-      =-  m(pending (~(put by pending.m) (shag:merk typed-message) -))
+      =-  m(pending (~(put by pending.m) hash -))
       ^-  proposal
       [name.act desc.act calls ~ deadline.act]
     ::  someone is poking us with off-chain proposal,  
@@ -162,11 +163,11 @@
       %vote
     ?:  =(our src):bowl
       ?:  =(on-chain.act %.y)
-        ::  just wait for batch
+        ::  vote on-chain proposal
         :_  state
         :_  ~
         %-  generate-tx
-        :*  `[%multisig /create-vote/(scot %ux hash.act)/(scot %ud aye.act)]
+        :*  `[%multisig /create-vote/(scot %ux multisig.act)]
             from=address.act
             contract=source:(need (multisig-item multisig.act))
             town=0x0
@@ -186,8 +187,8 @@
           !>  ^-  wallet-poke:wallet
           :*  %sign-typed-message
             :-  ~  :-  %multisig
-            ::  add =-  to path somehow 
-            /sign-vote/(scot %ux multisig.act)/(scot %ux hash.act)/(scot %ux address.act)
+            %+  weld  /sign-vote
+            /(scot %ux multisig.act)/(scot %ux hash.act)/(scot %ux address.act)
             from=address.act
             domain=multisig.act
             type=execute-json
@@ -201,13 +202,7 @@
     =+  m=(~(got by off) multisig.act)
     ?~  sig.act  !!
     =/  prop=proposal  (~(got by pending.m) hash.act)
-    =+  %-  shag:merk 
-        :*  multisig.act 
-            calls.prop 
-            (need (len-executed multisig.act))
-            deadline.prop
-        ==
-    ?>  (uqbar-validate:sig address.act - u.sig.act)
+    ?>  (uqbar-validate:sig address.act hash.act u.sig.act)
     :-  ~
     =-  state(off (~(put by off) multisig.act -))
     =-  m(pending (~(put by pending.m) hash.act -))
@@ -250,9 +245,7 @@
     ==
   ::
       %find-addys
-    ::  thread seems a bit unnecessary. 
-    ::  could also do no pending state, just updates to fe
-    ::  perhaps scry out address=>ship from social graph
+    ::  perhaps vice versa could scry out address=>ship from social graph
     :_  state
     %+  murn  ~(tap in ships.act)
       |=  =ship
@@ -270,6 +263,10 @@
   ?+    -.update  `state
       %sequencer-receipt
     ::  Q: should we populate on-chain data here too?
+    ::  when we create a multisig, an off-chain proposal lives along-side it.
+    ::  but what if we create an on-chain proposal or vote?
+    ::  should we have a paralell off-chain proposal/vote too? 
+    ::  it will muddle up the separation a bit, but possible. 
     ?>  ?=(^ origin.update)
     ~&  "origin!: {<u.origin.update>}"
     ?+    q.u.origin.update  !!
@@ -277,19 +274,20 @@
       ?.  =(%0 errorcode.output.update)
         `state(pending-m ~)
       ::  look for %multisig label, fetch contract from it.
-      ::  or other way around, one contract changed, with us as holder due to deploy?
+      ::  or vice versa?
       ?~  pending-m  `state
-      =/  modified=(list item:smart)  
+      =/  modified=(list item)  
         (turn ~(val by modified.output.update) tail)
       ::  
-      =|  ids=(unit [data=id:smart con=id:smart threshold=@ud members=(pset address:smart)]) 
+      =|  ids=(unit [data=id con=id threshold=@ud members=(pset address)]) 
       =.  ids
         |-  ^+  ids
         ?~  modified  ~
-        =/  =item:smart  i.modified
+        =/  =item  i.modified
         ?.  ?&  ?=(%& -.item)
                 =(label.p.item %multisig)
-                ::  additional possible checks? accidental other multisig here in batch?
+                ::  additional possible checks?
+                ::  possible accidental other multisig?
             ==
             $(modified t.modified)
         =+  ;;(multisig-state:con noun.p.item)
@@ -302,17 +300,16 @@
         pending-m  ~
       ==
     ::
-        [%create-proposal @ ~]
+        ?([%create-proposal @ ~] [%create-vote @ ~] [%execute @ ~])
+      ::  todo effects to FE
       ?.  =(%0 errorcode.output.update)
-        `state(pending-m ~)
-      ::  
-      `state
-    ::  
-        [%create-vote @ @ ~]
-      `state
-    ::  
-        [%execute @ ~]
-      `state
+        `state
+      =+  id=(slav %ux i.t.q.u.origin.update)
+      =/  m
+        =+  (got:big:eng modified.output.update id)
+        ;;(multisig-state:con ?>(?=(%& -.-) noun.p.-))
+      :_  state(on (~(put by on) id m))
+      ~
     ==
   ::
       %signed-message
@@ -323,7 +320,7 @@
       =+  id=(slav %ux i.t.q.u.origin.update)
       =+  hash=(slav %ux i.t.t.q.u.origin.update)
       =+  address=(slav %ux i.t.t.t.q.u.origin.update)
-      ::  note nesting =+  in =/  don't work
+      ::  note nesting =+  in =/  doesn't work
       =/  =multisig  (~(got by off) id)
       =/  =proposal  (~(got by pending.multisig) hash)
       ::
@@ -363,14 +360,14 @@
   ==
 ::
 ++  len-executed
-  |=  =id:smart
+  |=  =id
   ?~  noun=(multisig-noun id)
     ~
   `(lent executed:(need noun))
 ::
 ++  multisig-item
-  |=  =id:smart
-  ^-  (unit data:smart)
+  |=  =id
+  ^-  (unit data)
   =/  up
     .^  update:indexer  %gx
       (scot %p our.bowl)  %uqbar  (scot %da now.bowl)
@@ -384,7 +381,7 @@
   `+.item
 ::
 ++  multisig-noun
-  |=  =id:smart
+  |=  =id
   ^-  (unit multisig-state:con)
   =+  (need (multisig-item id))
   `;;(multisig-state:con noun.-)
