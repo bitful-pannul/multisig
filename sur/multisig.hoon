@@ -36,8 +36,25 @@
       [%load multisig=id name=@t]
       [%share multisig=id state=(unit multisig) ship=(unit ship)]
   ==
+::
+::  combined on/off type for scry/sub updates
++$  msig  
+  $:  name=@t
+      members=(set address)
+      ships=(set ship)
+      threshold=@ud
+      on-pending=(map hash proposal:con)
+      off-pending=(map hash proposal)
+  ==
+::
 +$  update
-  $%  [%denied from=@p]
+  $%  [%multisigs msigs=(map id msig)]
+      [%multisig =id =msig]
+      ::
+      [%proposal proposal=(each proposal:con proposal)]  :: ?(proposal proposal:con) <- fish-loop recursion
+      [%vote =id =hash =address aye=?]
+      ::
+      [%denied from=@p]
       [%shared from=@p address=@ux]
   ==
 +$  sig  [v=@ r=@ s=@]

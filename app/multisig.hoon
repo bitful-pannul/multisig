@@ -7,8 +7,6 @@
       off=(map @ux multisig)
       :: pending tx:s 
       pending-m=(unit multisig)
-      :: pending-p=(unit proposal), not needed for on-chain, 
-      :: might need for off-chain if we're going to do automatic vote upon proposal
   ==
 +$  card  card:agent:gall
 --
@@ -55,7 +53,26 @@
   ::  all actively-flowing information. does not provide any initial state.
     [%updates ~]  `this
   ==
-++  on-agent  on-agent:def
+++  on-agent  
+  |=  [=wire =sign:agent:gall]
+  ^-  (quip card _this)
+  ?+    wire  (on-agent:def wire sign)
+    ::  add poke-ack catalog?
+      [%watch-batch ~]
+    ?.  ?=(%fact -.sign)
+      ?:  ?=(%kick -.sign)
+        ::  attempt to re-sub
+        [[watch-indexer:hc ~] this]
+      (on-agent:def wire sign)
+    =/  upd  !<(update:indexer q.cage.sign)
+    ?.  ?=(%batch-order -.upd)  `this
+    =-  `this(on.state -)
+    %-  ~(urn by on)
+      |=  [id=@ux m=multisig-state:con]
+      ?~  noun=(multisig-noun id)
+        m
+      u.noun
+  ==
 ++  on-leave  on-leave:def
 ++  on-peek   handle-scry:hc
 ++  on-arvo   on-arvo:def
@@ -220,7 +237,6 @@
   ::
       %share
     ?:  =(our src):bowl
-      :: include %load from on-chain? or keep separate
       :_  state  :_  ~
       :*  %pass   /request
           %agent  [(need ship.act) %multisig]
@@ -229,9 +245,13 @@
       ==
     ?^  state.act
       ::  someone updating us
-      ::  check for collisions?
+      ::  check for off-chain collisions?
+      =+  noun=(multisig-noun multisig.act)
       :-  ~
-      state(off (~(put by off) multisig.act u.state.act))
+      %=  state
+        off  (~(put by off) multisig.act u.state.act)
+        on   ?~(noun on (~(put by on) multisig.act u.noun))
+      ==
     ::  someone asking us
     =+  multi=(~(get by off) multisig.act)
     ?~  multi  `state
@@ -351,12 +371,54 @@
   ^-  (unit (unit cage))
   ?+    path  !!
       [%x %multisigs ~]
-    ``noun+!>(~)
-  :: 
+      ::  todo: useful json/noun channel conversions!
+    =+  %+  turn  ~(tap by on)
+        |=  [=id m=multisig-state:con]
+        ?~  multisig=(~(get by off) id)
+          :-  id
+          ['no name' members.m ~ threshold.m pending.m ~]
+        :-  id
+        :*  name.u.multisig
+            members.m
+            ships.u.multisig
+            threshold.m
+            pending.m
+            pending.u.multisig
+        ==
+    ``multisig-update+!>(`update`[%multisigs (~(gas by *(map id msig)) -)])
+    :: 
       [%x %multisig @ ~]
     =/  id  (slav %ux i.t.t.path)
-    =/  multi  (~(get by on) id)
-    ``noun+!>(~)
+    =/  multi  (~(got by on) id)
+    ?~  m=(~(get by off) id)
+        =+  :-  id
+            ['no name' members.multi ~ threshold.multi pending.multi ~]
+        ``multisig-update+!>(`update`[%multisig -])
+    =+  :-  id
+      :*  name.u.m
+          members.multi
+          ships.u.m
+          threshold.multi
+          pending.multi
+          pending.u.m
+      ==
+      ``multisig-update+!>(`update`[%multisig -])
+    ::
+      [%x %proposal @ @ ~]
+    ::  revise on/off a bit.
+    =/  id  (slav %ux i.t.t.path)
+    =/  hash  (slav %ux i.t.t.t.path)
+    =/  multi  (~(got by on) id)
+    ?~  m=(~(get by off) id)
+      ::  if no off-chain multisig
+      =+  (~(got by pending.multi) hash)
+      ``multisig-update+!>(`update`[%proposal [%.y -]])
+    ?~  p=(~(get by pending.u.m) hash)
+      ::  if no off-chain proposal
+      =+  (~(got by pending.multi) hash)
+      ``multisig-update+!>(`update`[%proposal [%.y -]])
+    ::  if off-chain proposal
+    ``multisig-update+!>(`update`[%proposal [%.n u.p]])
   ==
 ::
 ++  len-executed
@@ -399,6 +461,11 @@
           town
           [%noun noun]
   ==  ==
+::
+++  watch-indexer
+  ^-  card
+  =-  [%pass /watch-batch %agent [our.bowl %uqbar] %watch -]
+      /indexer/multisig/batch-order/(scot %ux 0x0)
 ::
 ++  handle-address-share
   |=  share=share-address:uqbar
