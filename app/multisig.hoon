@@ -109,7 +109,8 @@
         :_  state
         :_  ~
         %-  generate-tx 
-        :*  `[%multisig /create-proposal/(scot %ux multisig.act)]
+        =+  hash=(shag:merk calls)
+        :*  `[%multisig /create-proposal/(scot %ux multisig.act)/(scot %ux hash)]       
              address.act  source:(need (multisig-item multisig.act))  0x0
              [%propose multisig.act calls]
         ==
@@ -151,10 +152,18 @@
     ::  or  poke back, ask for multisig first. receive, then get proposal. 
     =+  m=(~(got by off) multisig.act)
     :: what if my off-chain ships are outdated?
-    ?>  (~(has in ships.m) src.bowl)  
+    :: might be an unnecessary check, just keep track of ppl,
+    :: but if some rando pokes you with a proper sig for a proposal, who cares.
+    :: ahh nvm, that's a vote. might need to move this to pending state, and add a sig
+    ::  ?>  (~(has in ships.m) src.bowl)  
     =+  (~(get by pending.m) (need hash.act))
-    ?^  -  `state  :: already have a pending proposal with that hash..   
-    =-  `state(off (~(put by off) multisig.act -))
+    ?^  -  `state  :: already have a pending proposal with that hash, crash? 
+    :-  :_  ~
+    %-  give-update
+      :+  %proposal  
+        (need hash.act)
+      [%.n name.act desc.act calls ~ deadline.act] 
+    =-  state(off (~(put by off) multisig.act -))
     =-  m(pending (~(put by pending.m) (need hash.act) -))
     [name.act desc.act calls ~ deadline.act]
   :: 
@@ -163,10 +172,10 @@
     =+  m=(~(got by off) multisig.act)
     =/  prop=proposal  (~(got by pending.m) hash.act)
     ::  optional, veriff sigs off-chain...?
-    :_  state ::  add pending
+    :_  state
     :_  ~
     %-  generate-tx
-    :*  `[%multisig /execute/(scot %ux hash.act)]
+    :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
         from=address.act
         contract=source:(need (multisig-item multisig.act))
         town=0x0
@@ -184,7 +193,9 @@
         :_  state
         :_  ~
         %-  generate-tx
-        :*  `[%multisig /create-vote/(scot %ux multisig.act)]
+        :*  :-  ~  
+            :-  %multisig  %+  weld  /create-vote/(scot %ux multisig.act)
+            /(scot %ux hash.act)/(scot %ux address.act)/(scot %ud aye.act)
             from=address.act
             contract=source:(need (multisig-item multisig.act))
             town=0x0
@@ -220,7 +231,8 @@
     ?~  sig.act  !!
     =/  prop=proposal  (~(got by pending.m) hash.act)
     ?>  (uqbar-validate:sig address.act hash.act u.sig.act)
-    :-  ~
+    :-  :_  ~
+    (give-update [%vote multisig.act hash.act address.act %.y])
     =-  state(off (~(put by off) multisig.act -))
     =-  m(pending (~(put by pending.m) hash.act -))
     %=  prop
@@ -245,12 +257,23 @@
       ==
     ?^  state.act
       ::  someone updating us
-      ::  check for off-chain collisions?
-      =+  noun=(multisig-noun multisig.act)
-      :-  ~
-      %=  state
-        off  (~(put by off) multisig.act u.state.act)
-        on   ?~(noun on (~(put by on) multisig.act u.noun))
+      ::  check for off-chain collisions? pending state to check upon next batch.
+      ?~  noun=(multisig-noun multisig.act)
+        `state
+      :_  %=  state
+            off  (~(put by off) multisig.act u.state.act)
+            on   (~(put by on) multisig.act u.noun)
+          ==
+      :_  ~
+      %-  give-update
+      :*  %multisig
+          multisig.act      
+          name.u.state.act
+          members.u.noun    
+          ships.u.state.act
+          threshold.u.noun
+          pending.u.noun
+          pending.u.state.act
       ==
     ::  someone asking us
     =+  multi=(~(get by off) multisig.act)
@@ -293,8 +316,6 @@
         [%create ~]
       ?.  =(%0 errorcode.output.update)
         `state(pending-m ~)
-      ::  look for %multisig label, fetch contract from it.
-      ::  or vice versa?
       ?~  pending-m  `state
       =/  modified=(list item)  
         (turn ~(val by modified.output.update) tail)
@@ -306,30 +327,50 @@
         =/  =item  i.modified
         ?.  ?&  ?=(%& -.item)
                 =(label.p.item %multisig)
-                ::  additional possible checks?
-                ::  possible accidental other multisig?
             ==
             $(modified t.modified)
         =+  ;;(multisig-state:con noun.p.item)
         `[id.p.item source.p.item threshold.- members.-]
       ?~  ids  `state
-      :-  ~
+      :-  :_  ~
+      %-  give-update
+        :*  %multisig  data.u.ids
+            name.u.pending-m   
+            members.u.ids
+            ships.u.pending-m
+            threshold.u.ids
+            ~  ~
+        ==
       %=  state
         off       (~(put by off) data.u.ids u.pending-m)
         on        (~(put by on) data.u.ids [members.u.ids threshold.u.ids ~ ~])
         pending-m  ~
       ==
     ::
-        ?([%create-proposal @ ~] [%create-vote @ ~] [%execute @ ~])
-      ::  todo effects to FE
+        ?([%create-proposal @ @ ~] [%create-vote @ @ @ @ ~] [%execute @ @ ~])
       ?.  =(%0 errorcode.output.update)
         `state
-      =+  id=(slav %ux i.t.q.u.origin.update)
-      =/  m
+      =*  path  q.u.origin.update
+      =+  id=(slav %ux i.t.path)
+      =+  hash=(slav %ux i.t.t.path)
+      =/  m=multisig-state:con
         =+  (got:big:eng modified.output.update id)
         ;;(multisig-state:con ?>(?=(%& -.-) noun.p.-))
       :_  state(on (~(put by on) id m))
-      ~
+      :_  ~
+      ?-    i.path 
+          %create-proposal
+        =+  (~(got by pending.m) hash)
+        (give-update [%proposal hash %.y -])
+      ::
+          %create-vote
+        =+  address=(slav %ux i.t.t.t.path)
+        ::  aye in i.t.t.t.t.path is %ud scot: FIX
+        (give-update [%vote id hash address %.y])
+      ::
+          %execute
+        (give-update [%execute id hash])
+      ==
     ==
   ::
       %signed-message
@@ -347,6 +388,7 @@
       :_  =-  state(off (~(put by off) id -))
           =-  multisig(pending (~(put by pending.multisig) hash -))
               proposal(sigs (~(put by sigs.proposal) address sig.update))
+      :-  (give-update [%vote id hash address %.y])
       %+  murn  ~(tap in ships.multisig)
         |=  =ship
         ?:  =(our.bowl ship)  ~
@@ -412,13 +454,13 @@
     ?~  m=(~(get by off) id)
       ::  if no off-chain multisig
       =+  (~(got by pending.multi) hash)
-      ``multisig-update+!>(`update`[%proposal [%.y -]])
+      ``multisig-update+!>(`update`[%proposal hash [%.y -]])
     ?~  p=(~(get by pending.u.m) hash)
       ::  if no off-chain proposal
       =+  (~(got by pending.multi) hash)
-      ``multisig-update+!>(`update`[%proposal [%.y -]])
+      ``multisig-update+!>(`update`[%proposal hash [%.y -]])
     ::  if off-chain proposal
-    ``multisig-update+!>(`update`[%proposal [%.n u.p]])
+    ``multisig-update+!>(`update`[%proposal hash [%.n u.p]])
   ==
 ::
 ++  len-executed
@@ -462,6 +504,15 @@
           [%noun noun]
   ==  ==
 ::
+++  give-update
+  |=  =update
+  ^-  card
+  :*  %give  %fact
+      ~[/updates]
+      %multisig-update
+      !>  ^-  ^update
+      update
+  ==
 ++  watch-indexer
   ^-  card
   =-  [%pass /watch-batch %agent [our.bowl %uqbar] %watch -]
@@ -475,19 +526,15 @@
       %request  !!
       %deny
     ::  surface this
-    :*  %give  %fact
-        ~[/updates]
-        %noun              :: multisig update
-        !>
-        [%denied src.bowl]
-    ==
+    :^    %give
+        %fact
+      ~[/updates]
+    multisig-update+!>(`update`[%denied src.bowl])
   ::
       %share
-    :*  %give  %fact
-        ~[/updates]
-        %noun              :: multisig update
-        !>  
-        [%share src.bowl address.share]
-    ==
+    :^    %give  
+        %fact
+      ~[/updates]
+    multisig-update+!>(`update`[%shared src.bowl address.share])
   ==
 --

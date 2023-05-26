@@ -51,8 +51,9 @@
   $%  [%multisigs msigs=(map id msig)]
       [%multisig =id =msig]
       ::
-      [%proposal proposal=(each proposal:con proposal)]  :: ?(proposal proposal:con) <- fish-loop recursion
+      [%proposal =hash proposal=(each proposal:con proposal)]  :: ?(proposal proposal:con) <- fish-loop recursion
       [%vote =id =hash =address aye=?]
+      [%execute =id =hash]
       ::
       [%denied from=@p]
       [%shared from=@p address=@ux]
