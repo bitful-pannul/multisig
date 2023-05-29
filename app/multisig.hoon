@@ -1,5 +1,5 @@
 /-  *multisig, indexer=zig-indexer, wallet=zig-wallet, uqbar=zig-uqbar
-/+  sig=zig-sig, merk, eng=zig-sys-engine, default-agent, dbug, verb
+/+  sig=zig-sig, merk, eng=zig-sys-engine, m=multisig, default-agent, dbug, verb
 |%
 +$  state-0
   $:  %0

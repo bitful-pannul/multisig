@@ -31,9 +31,10 @@
       [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
       [%execute =address multisig=id =hash]
       ::
+      :: [%edit multisig=id name=(unit @t) remove/add ships]
       [%find-addys ships=(set ship)]
       [%share multisig=id state=(unit multisig) ship=(unit ship)]
-      [%load multisig=id ship=(unit ship)]
+      [%load multisig=id]
       [%accept multisig=id =ship]
   ==
 ::
@@ -57,7 +58,7 @@
       [%execute =id =hash]
       ::
       [%invite =id =ship =multisig]
-      [%inivites invites=(map [id ship] multisig)]
+      [%invites invites=(map [id ship] multisig)]
       [%denied from=@p]
       [%shared from=@p address=@ux]
   ==
