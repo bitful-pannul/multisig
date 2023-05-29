@@ -27,14 +27,15 @@
 +$  sigs  (map address =sig)
 +$  action
   $%  [%create =address threshold=@ud ships=(set ship) members=(set address) name=@t]
-      [%find-addys ships=(set ship)]
-      :: 
       [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t desc=@t]
       [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
       [%execute =address multisig=id =hash]
-      ::  todo: add accepting/rejecting flow
-      [%load multisig=id name=@t]
+      ::
+      :: [%edit multisig=id name=(unit @t) remove/add ships]
+      [%find-addys ships=(set ship)]
       [%share multisig=id state=(unit multisig) ship=(unit ship)]
+      [%load multisig=id]
+      [%accept multisig=id =ship]
   ==
 ::
 ::  combined on/off type for scry/sub updates
@@ -50,10 +51,14 @@
 +$  update
   $%  [%multisigs msigs=(map id msig)]
       [%multisig =id =msig]
+      [%multisig-on =id multisig=multisig-state:con]
       ::
-      [%proposal proposal=(each proposal:con proposal)]  :: ?(proposal proposal:con) <- fish-loop recursion
+      [%proposal =hash proposal=(each proposal:con proposal)]
       [%vote =id =hash =address aye=?]
+      [%execute =id =hash]
       ::
+      [%invite =id =ship =multisig]
+      [%invites invites=(map [id ship] multisig)]
       [%denied from=@p]
       [%shared from=@p address=@ux]
   ==

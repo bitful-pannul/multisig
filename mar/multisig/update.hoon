@@ -1,4 +1,5 @@
 /-  *multisig
+/+  m=multisig
 ::
 |_  up=update
 ++  grab
@@ -9,6 +10,7 @@
 ++  grow
   |%
   ++  noun  up
+  ++  json  (update:enjs:m up)
   --
 ::
 ++  grad  %noun
