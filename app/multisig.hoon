@@ -5,8 +5,10 @@
   $:  %0
       on=(map @ux multisig-state:con)
       off=(map @ux multisig)
+      invites=(map [@ux @p] multisig)
       :: pending tx:s 
       pending-m=(unit multisig)
+      pending-i=(map [@ux @p] multisig)
   ==
 +$  card  card:agent:gall
 --
@@ -57,7 +59,6 @@
   |=  [=wire =sign:agent:gall]
   ^-  (quip card _this)
   ?+    wire  (on-agent:def wire sign)
-    ::  add poke-ack catalog?
       [%watch-batch ~]
     ?.  ?=(%fact -.sign)
       ?:  ?=(%kick -.sign)
@@ -66,7 +67,19 @@
       (on-agent:def wire sign)
     =/  upd  !<(update:indexer q.cage.sign)
     ?.  ?=(%batch-order -.upd)  `this
-    =-  `this(on.state -)
+    ::  verify accepted invites. 
+    ::  current setup with %accept cards returned means 1 extra scry.
+    :-  %+  murn  ~(tap by pending-i)
+        |=  [[=id =ship] =multisig]
+        ?~  noun=(multisig-noun id)
+          ~
+        :-  ~
+        :*  %pass   /accept
+            %agent  [our.bowl %multisig]
+            %poke   %multisig-action
+            !>([%accept id ship])
+        ==
+    =-  this(on.state -, pending-i ~)
     %-  ~(urn by on)
       |=  [id=@ux m=multisig-state:con]
       ?~  noun=(multisig-noun id)
@@ -151,10 +164,7 @@
     ::  todo: scry unknown multisig from chain, add off chain data later?
     ::  or  poke back, ask for multisig first. receive, then get proposal. 
     =+  m=(~(got by off) multisig.act)
-    :: what if my off-chain ships are outdated?
-    :: might be an unnecessary check, just keep track of ppl,
-    :: but if some rando pokes you with a proper sig for a proposal, who cares.
-    :: ahh nvm, that's a vote. might need to move this to pending state, and add a sig
+    :: what if my off-chain ships are outdated? 
     ::  ?>  (~(has in ships.m) src.bowl)  
     =+  (~(get by pending.m) (need hash.act))
     ?^  -  `state  :: already have a pending proposal with that hash, crash? 
@@ -171,7 +181,7 @@
     ?>  =(our src):bowl
     =+  m=(~(got by off) multisig.act)
     =/  prop=proposal  (~(got by pending.m) hash.act)
-    ::  optional, veriff sigs off-chain...?
+    ::  optional, veriff sigs off-chain?
     :_  state
     :_  ~
     %-  generate-tx
@@ -248,43 +258,50 @@
     state(on (~(put by on) multisig.act u.noun))
   ::
       %share
+    ::  is a %request poke necessary?
     ?:  =(our src):bowl
-      :_  state  :_  ~
-      :*  %pass   /request
+      ::  us inviting someone
+      =+  m=(~(got by off) multisig.act)
+      :_  =-  state(off (~(put by off) multisig.act -))
+          m(ships (~(put in ships.m) (need ship.act)))
+      :_  ~
+      :*  %pass   /share
           %agent  [(need ship.act) %multisig]
           %poke   %multisig-action
-          !>([%share multisig.act ~ ~])
+          !>([%add-ship multisig.act `m ~])
       ==
-    ?^  state.act
-      ::  someone updating us
-      ::  check for off-chain collisions? pending state to check upon next batch.
-      ?~  noun=(multisig-noun multisig.act)
-        `state
-      :_  %=  state
-            off  (~(put by off) multisig.act u.state.act)
-            on   (~(put by on) multisig.act u.noun)
-          ==
-      :_  ~
-      %-  give-update
-      :*  %multisig
-          multisig.act      
-          name.u.state.act
-          members.u.noun    
-          ships.u.state.act
+    ::  someone inviting us 
+    ?~  state.act  `state 
+    :_  state(invites (~(put by invites) [multisig.act src.bowl] u.state.act))
+    :_  ~
+    %-  give-update
+    :^    %invite
+        multisig.act
+      src.bowl
+    u.state.act
+  ::
+      %accept
+    ?>  =(our src):bowl
+    =+  m=(~(got by invites) [multisig.act ship.act])  
+    ?~  noun=(multisig-noun multisig.act)
+      ::  add update effect to fe, "not found yet, waiting for batch."
+      :_  =-  state(pending-i -)
+          (~(put by pending-i) [multisig.act ship.act] m)
+      ~
+    :-  :_  ~
+    %-  give-update
+      :*  %multisig  multisig.act
+          name.m   
+          members.u.noun
+          ships.m
           threshold.u.noun
           pending.u.noun
-          pending.u.state.act
+          pending.m
       ==
-    ::  someone asking us
-    =+  multi=(~(get by off) multisig.act)
-    ?~  multi  `state
-    :_  =-  state(off (~(put by off) multisig.act -))
-        u.multi(ships (~(put in ships.u.multi) src.bowl))
-    :_  ~
-    :*  %pass   /share
-        %agent  [src.bowl %multisig]
-        %poke   %multisig-action
-        !>([%share multisig.act multi ~])  :: src.bowl not in ships, fix
+    %=  state
+      off       (~(put by off) multisig.act m)
+      on        (~(put by on) multisig.act u.noun)
+      invites   (~(del by invites) [multisig.act ship.act])
     ==
   ::
       %find-addys
@@ -305,13 +322,7 @@
   ^-  (quip card _state)
   ?+    -.update  `state
       %sequencer-receipt
-    ::  Q: should we populate on-chain data here too?
-    ::  when we create a multisig, an off-chain proposal lives along-side it.
-    ::  but what if we create an on-chain proposal or vote?
-    ::  should we have a paralell off-chain proposal/vote too? 
-    ::  it will muddle up the separation a bit, but possible. 
     ?>  ?=(^ origin.update)
-    ~&  "origin!: {<u.origin.update>}"
     ?+    q.u.origin.update  !!
         [%create ~]
       ?.  =(%0 errorcode.output.update)
@@ -413,7 +424,6 @@
   ^-  (unit (unit cage))
   ?+    path  !!
       [%x %multisigs ~]
-      ::  todo: useful json/noun channel conversions!
     =+  %+  turn  ~(tap by on)
         |=  [=id m=multisig-state:con]
         ?~  multisig=(~(get by off) id)
@@ -445,6 +455,12 @@
           pending.u.m
       ==
       ``multisig-update+!>(`update`[%multisig -])
+    ::
+      [%x %multisig-on @ ~]
+    =/  id  (slav %ux i.t.t.path)
+    ?~  noun=(multisig-noun id)
+      !!
+    ``multisig-update+!>(`update`[%multisig-on id u.noun])
     ::
       [%x %proposal @ @ ~]
     ::  revise on/off a bit.
