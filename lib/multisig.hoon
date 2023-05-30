@@ -173,7 +173,7 @@
         ::
         [%find-addys (ot ~[[%ships (as (se %p))]])]
         [%share dejs-share]
-        [%load (ot ~[[%multisig (se %ux)]])]
+        [%load (ot ~[[%multisig (se %ux)] [%off (mu dejs-load-off)]])]
         [%accept (ot ~[[%multisig (se %ux)] [%ship (se %p)]])]
       ==
     ++  dejs-create
@@ -221,6 +221,11 @@
       :~  [%multisig (se %ux)]
           [%state ul]       :: not from fe 
           [%ship (mu (se %p))]
+      ==
+    ++  dejs-load-off
+      %-  ot
+      :~  [%name so]
+          [%ships (as (se %p))]
       ==
     --
   --

@@ -34,7 +34,7 @@
       :: [%edit multisig=id name=(unit @t) remove/add ships]
       [%find-addys ships=(set ship)]
       [%share multisig=id state=(unit multisig) ship=(unit ship)]
-      [%load multisig=id]
+      [%load multisig=id off=(unit [name=@t ships=(set ship)])]
       [%accept multisig=id =ship]
   ==
 ::

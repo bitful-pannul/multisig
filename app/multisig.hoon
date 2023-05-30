@@ -251,7 +251,12 @@
     =+  noun=(multisig-noun multisig.act)
     :-  ~
     ?~  noun  state
-    state(on (~(put by on) multisig.act u.noun))
+    %=  state
+      on   (~(put by on) multisig.act u.noun)
+      off  ?~  off.act 
+            off 
+           (~(put by off) multisig.act [name.u.off.act ships.u.off.act ~])
+    ==
   ::
       %share
     ::  is a %request poke necessary?
