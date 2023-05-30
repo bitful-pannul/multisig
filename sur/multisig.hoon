@@ -61,6 +61,7 @@
       [%invites invites=(map [id ship] multisig)]
       [%denied from=@p]
       [%shared from=@p address=@ux]
+      [%notif message=@t]
   ==
 +$  sig  [v=@ r=@ s=@]
 ::

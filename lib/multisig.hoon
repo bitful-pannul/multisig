@@ -72,6 +72,9 @@
       :~  [%from %s (scot %p from.up)]
           [%address %s (scot %ux address.up)]
       ==
+    ::
+        %notif
+      [%s message.up]
     ==
   ++  enjs-msig
     |=  =msig

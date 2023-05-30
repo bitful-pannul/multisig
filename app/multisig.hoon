@@ -110,7 +110,6 @@
             interface=~
             :+  %create
               threshold.act
-            ::  b careful with putting psets on chain! noun can be *broken*
             (make-pset ~(tap in members.act))
     ==  ==
   ::
@@ -118,7 +117,7 @@
     =+  calls=;;((list call) (cue calls.act))
     ?:  =(our src):bowl
       ?:  =(on-chain.act %.y)
-        :: we are posting an on-chain proposal
+        :: posting an on-chain proposal
         :_  state
         :_  ~
         %-  generate-tx 
@@ -158,16 +157,13 @@
       ^-  proposal
       [name.act desc.act calls ~ deadline.act]
     ::  someone is poking us with off-chain proposal,  
-    ::  could be on-chain but we should hear that from chain in that case
-    ::  or use sequencer receipts.
     ?>  =(on-chain.act %.n)
-    ::  todo: scry unknown multisig from chain, add off chain data later?
-    ::  or  poke back, ask for multisig first. receive, then get proposal. 
     =+  m=(~(got by off) multisig.act)
-    :: what if my off-chain ships are outdated? 
+    ::  what if my off-chain ships are outdated? 
     ::  ?>  (~(has in ships.m) src.bowl)  
+    ::  solution: always sign first proposal, verify
     =+  (~(get by pending.m) (need hash.act))
-    ?^  -  `state  :: already have a pending proposal with that hash, crash? 
+    ?^  -  `state
     :-  :_  ~
     %-  give-update
       :+  %proposal  
@@ -284,10 +280,11 @@
     ?>  =(our src):bowl
     =+  m=(~(got by invites) [multisig.act ship.act])  
     ?~  noun=(multisig-noun multisig.act)
-      ::  add update effect to fe, "not found yet, waiting for batch."
       :_  =-  state(pending-i -)
           (~(put by pending-i) [multisig.act ship.act] m)
-      ~
+      :_  ~
+      %-  give-update
+      [%notif 'did not find on-chain multisig, waiting for next batch.']
     :-  :_  ~
     %-  give-update
       :*  %multisig  multisig.act
