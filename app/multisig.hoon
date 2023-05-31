@@ -126,7 +126,7 @@
       =/  typed-message  
         :+  multisig.act
           execute-jold-hash
-        [multisig.act calls (need (len-executed multisig.act)) deadline.act]
+        [multisig.act calls +(need (nonce multisig.act)) deadline.act]
       ::
       =+  hash=(shag:merk typed-message)
       :-  %+  murn  ~(tap in ships.m)
@@ -177,7 +177,7 @@
     %-  generate-tx
     :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
         from=address.act
-        contract=source:(need (multisig-item multisig.act))
+        contract=(need (multisig-source multisig.act))
         town=0x0
         :*  %execute
             multisig.act
@@ -206,7 +206,7 @@
             type=execute-json
             :^    multisig.act 
                 calls.prop
-              (need (len-executed multisig.act))
+              +(need (nonce multisig.act))
             deadline.prop
       ==  ==
     ::  someone voted
@@ -297,9 +297,9 @@
       =+  id=(slav %ux i.t.path)
       ::  =/  =action:con
       ::    ;;(action:con calldata.transaction.update)
-      =/  m=multisig-state:con
+      =/  m=state:con
         =+  (got:big:eng modified.output.update id)
-        ;;(multisig-state:con ?>(?=(%& -.-) noun.p.-))
+        ;;(state:con ?>(?=(%& -.-) noun.p.-))
       ::
       =/  msig
         :*  name.u.pending-m
@@ -307,7 +307,7 @@
             ~
             members.m
             threshold.m
-            executed.m
+            nonce.m
         ==
       :-  :_  
       %+  murn  ~(tap in ships.u.pending-m)
@@ -332,9 +332,9 @@
       =*  path  q.u.origin.update
       =+  id=(slav %ux i.t.path)
       =+  hash=(slav %ux i.t.t.path)
-      =/  m=multisig-state:con
+      =/  m=state:con
         =+  (got:big:eng modified.output.update id)
-        ;;(multisig-state:con ?>(?=(%& -.-) noun.p.-))
+        ;;(state:con ?>(?=(%& -.-) noun.p.-))
       ::  fix, update on-chain parts
       :_  state
       :_  ~
@@ -397,11 +397,11 @@
     ``multisig-update+!>(`update`[%invites invites])
   ==
 ::
-++  len-executed
+++  nonce
   |=  =id
   ?~  noun=(multisig-noun id)
     ~
-  `(lent executed:(need noun))
+  `nonce:(need noun)
 ::
 ++  multisig-item
   |=  =id
@@ -418,11 +418,17 @@
   ?>  =(%multisig label.p.item)
   `+.item
 ::
+++  multisig-source
+  |=  =id
+  ?~  item=(multisig-item id)
+    ~
+  `source:(need item)
+::
 ++  multisig-noun
   |=  =id
-  ^-  (unit multisig-state:con)
+  ^-  (unit state:con)
   =+  (need (multisig-item id))
-  `;;(multisig-state:con noun.-)
+  `;;(state:con noun.-)
 ::
 ++  get-multisig
   |=  =id
@@ -431,14 +437,14 @@
     ~  :: no multisig found on-chain
   ?~  off=(~(get by msigs) id)
     :-  ~
-    ['no name' ~ ~ [members threshold executed]:u.noun]
+    ['no name' ~ ~ [members threshold nonce]:u.noun]
   :-  ~
   :*  name.u.off
       ships.u.off
       pending.u.off
       members.u.noun
       threshold.u.noun
-      executed.u.noun
+      nonce.u.noun
   == 
 ::
 ++  generate-tx

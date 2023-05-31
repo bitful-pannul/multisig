@@ -75,8 +75,8 @@
         [%ships a+(turn ~(tap in ships.multisig) ship)]
         [%pending (enjs-pending pending.multisig)]
         [%members a+(turn ~(tap in members.multisig) |=(a=@ux s+(scot %ux a)))]
-        [%threshold %s (scot %ud threshold.multisig)]
-        [%executed a+(turn executed.multisig |=(a=@ux s+(scot %ux a)))]
+        [%threshold s+(scot %ud threshold.multisig)]
+        [%executed s+(scot %ud threshold.multisig)]
     ==
   ::
    ++  enjs-pending

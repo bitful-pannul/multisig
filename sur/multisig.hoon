@@ -2,8 +2,8 @@
 :: 
 ::  deploy a multisig contract & data item
 ::
-::  account abstraction enabled multisig only 
-::  uses off-chain signatures.
+::  account abstraction enabled multisig,
+::  exclusively uses off-chain signatures.
 ::
 /+  *zig-sys-smart
 /=  con  /con/lib/multisig  :: on-chain noun type in con
@@ -16,10 +16,11 @@
       ::  on
       members=(pset address)
       threshold=@ud
-      executed=(list hash)
+      nonce=@ud
   ==
 +$  proposals  (map =hash =proposal)
-::
+::  Q: keep calls, just format them correctly upon execute?
+::  actually, signíng shits the bed a little that way. 
 +$  proposal
   $:  name=@t
       desc=@t
