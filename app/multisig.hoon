@@ -105,7 +105,7 @@
     :*  `[%multisig /create]  
         address.act  publish-contract  0x0
         :*  %deploy-and-init  
-            mutable=%.n     :: check
+            mutable=%.n
             multisig-code
             interface=~
             :+  %create
@@ -345,7 +345,17 @@
         =+  ;;(multisig-state:con noun.p.item)
         `[id.p.item source.p.item threshold.- members.-]
       ?~  ids  `state
-      :-  :_  ~
+      :-  :_  
+      %+  murn  ~(tap in ships.u.pending-m)
+      |=  =ship
+      ?:  =(ship our.bowl)  ~
+      :-  ~
+      :*  %pass   /share
+          %agent  [ship %multisig]
+          %poke   %multisig-action
+          !>(`action`[%share data.u.ids pending-m ~])
+      == 
+      ::  give this to them folks. 
       %-  give-update
         :*  %multisig  data.u.ids
             name.u.pending-m   
