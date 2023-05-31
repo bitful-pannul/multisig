@@ -170,6 +170,7 @@
       %execute
     ?>  =(our src):bowl
     =+  m=(~(got by msigs) multisig.act)
+    =+  con=(need (multisig-source multisig.act))
     =/  prop=proposal  (~(got by pending.m) hash.act)
     ::  optional, veriff sigs off-chain?
     :_  state
@@ -177,13 +178,13 @@
     %-  generate-tx
     :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
         from=address.act
-        contract=(need (multisig-source multisig.act))
+        contract=con
         town=0x0
-        :*  %execute
+        :*  %validate
             multisig.act
             sigs.prop
-            calls.prop
             deadline.prop
+            (format-calldata multisig.act con calls.prop)
     ==  ==  
   ::
       %vote
@@ -191,6 +192,7 @@
       ::  vote on off-chain proposal. 
       ::  sign-message, then poke to ships.
       =+  m=(~(got by msigs) multisig.act)
+      =+  con=(need (multisig-source multisig.act))
       =/  prop=proposal  (~(got by pending.m) hash.act)
       :_  state  :_  ~
       :*  %pass   /sign
@@ -202,10 +204,9 @@
             %+  weld  /sign-vote
             /(scot %ux multisig.act)/(scot %ux hash.act)/(scot %ux address.act)
             from=address.act
-            domain=multisig.act
+            domain=(need (multisig-source multisig.act))
             type=execute-json
-            :^    multisig.act 
-                calls.prop
+            :+  calls.prop
               +(need (nonce multisig.act))
             deadline.prop
       ==  ==
@@ -446,6 +447,14 @@
       threshold.u.noun
       nonce.u.noun
   == 
+::
+++  format-calldata
+  |=  [=id con=id calls=(list call)]
+  :+  con
+    0x0
+  :+  %execute
+    id
+  calls
 ::
 ++  generate-tx
   |=  [=origin:wallet from=@ux con=@ux town=@ux noun=*] 

@@ -13,7 +13,8 @@
       [%set-threshold our=id new=@ud]
   ==
 ::
-++  execute-jold-hash  0xdb2b.6ff8.6b72.36e6.3642.94f3.f9f9.38dc
+++  execute-jold-hash  0x74cb.8490.d479.82bb.e371.8ead.78f0.c68f
+::
 ::  ^-  @ux
 ::  %-  sham
 ::  %-  need
@@ -21,11 +22,13 @@
 ::  ^-  cord
 ::  '''
 ::  [
-::    {"multisig": "ux"},
-::    {"call": [
-::      {"contract": "ux"},
-::      {"town": "ux"},
-::      {"calldata": [{"p": "tas"}, {"q": "*"}]}
+::    {"calls": [
+::      "list",
+::      [
+::        {"contract": "ux"},
+::        {"town": "ux"},
+::        {"calldata": [{"p": "tas"}, {"q": "*"}]}
+::      ]
 ::    ]},
 ::    {"nonce": "ud"},
 ::    {"deadline": "ud"}

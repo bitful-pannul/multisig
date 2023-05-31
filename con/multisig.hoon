@@ -38,7 +38,8 @@
     ::  assert signatures are correct
     =/  =typed-message
       :+  this.context  execute-jold-hash
-      [call.action +(nonce.noun.multisig) deadline.action]
+      ::  signing msg: [(list call) nonce deadline]
+      [+.q.calldata.call.action +(nonce.noun.multisig) deadline.action]
     ?>  %+  levy  ~(tap py sigs.action)
         |=  [=address =sig]
         =((recover typed-message sig) address)
