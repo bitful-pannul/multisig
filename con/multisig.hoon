@@ -46,6 +46,7 @@
     [call.action^~ [~ ~ ~ ~]]
   ::
       %execute
+    ?>  =(id.caller.context this.context)
     :-  calls.action
     (result [%& multisig(nonce.noun +(nonce.noun.multisig))]^~ ~ ~ ~)
   ::

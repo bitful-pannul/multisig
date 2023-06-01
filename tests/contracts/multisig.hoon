@@ -14,19 +14,44 @@
 ++  caller-3  ^-  caller:smart  [addr-3 1 (id addr-3)]:zigs
 ++  caller-4  ^-  caller:smart  [addr-4 1 (id addr-4)]:zigs
 ::
-++  my-shell  [caller-1 ~ id.p:pact:zigs [1 1.000.000] default-town-id 0]
+++  multi-shell   [caller-1 ~ id.p:pact:multisig [1 1.000.000] 0x0 0]
+++  create-shell  [caller-1 ~ id.p:uninitialized-pact:multisig [1 1.000.000] 0x0 0]
 ::
-++  multisig-pact
-  ^-  item:smart
-  =/  code  (cue multisig-contract)
-  :*  %|  (hash-pact:smart 0x1234.5678 0x1234.5678 default-town-id code)
-      0x1234.5678  ::  source
-      0x1234.5678  ::  holder
-      default-town-id
-      [-.code +.code]
-      ~
-  ==
-::
+++  multisig
+  |%
+  ++  pact
+    ^-  item:smart
+    =/  code  (cue multisig-contract)
+    :*  %|  (hash-pact:smart 0x1234.5678 0x1234.5678 default-town-id code)
+        0x1234.5678  ::  source
+        0x1234.5678  ::  holder
+        default-town-id
+        [-.code +.code]
+        ~
+    ==
+  ++  id  (hash-data:smart id.p:pact id.p:pact default-town-id 0)
+  ++  our
+    |=  =state:multisig-lib
+    ^-  item:smart
+    :*  %&  id
+        id.p:pact
+        id.p:pact
+        default-town-id
+        0  %multisig
+        state
+    ==
+  ++  uninitialized-pact
+    ^-  item:smart
+    =/  code  (cue multisig-contract)
+    :*  %|  (hash-pact:smart 0x9876.5432 0x9876.5432 default-town-id code)
+        0x9876.5432  ::  source
+        0x9876.5432  ::  holder
+        default-town-id
+        [-.code +.code]
+        ~
+    ==
+  --
+::  private keys for signing proposals
 ++  m-priv-1  0xaaaa
 ++  m-priv-2  0xbbbb
 ++  m-priv-3  0xcccc
@@ -37,42 +62,12 @@
 ++  core-3    (from-seed:bip32 [64 m-priv-3])
 ++  addr-3    (address-from-prv:key:ethereum private-key:core-3)
 ::
-++  my-multisig-id
-  ^-  id:smart
-  %:  hash-data:smart
-      id.p:multisig-pact
-      id.p:multisig-pact
-      default-town-id
-      0
-  ==
-++  my-multisig
-  |=  =state:multisig-lib
-  ^-  item:smart
-  :*  %&  my-multisig-id
-      id.p:multisig-pact
-      id.p:multisig-pact
-      default-town-id
-      0  %multisig
-      state
-  ==
-::
-++  uninitialized-multisig-pact
-  ^-  item:smart
-  =/  code  (cue multisig-contract)
-  =/  id  (hash-pact:smart 0x9876.5432 0x9876.5432 default-town-id code)
-  :*  %|  id
-      0x9876.5432  ::  source
-      0x9876.5432  ::  holder
-      default-town-id
-      [-.code +.code]
-      ~
-  ==
-::
 ++  state
   %-  make-chain-state
-  :~  multisig-pact
-      (my-multisig [(make-pset:smart ~[addr-1 addr-2 addr-3]) 2 7])
-      (account:zigs id.p:multisig-pact 1.000.000 ~)
+  :~  pact:multisig
+      uninitialized-pact:multisig
+      (our:multisig [(make-pset:smart ~[addr-1 addr-2 addr-3]) 2 7])
+      (account:zigs id.p:pact:multisig 1.000.000 ~)
       pact:zigs
       (account addr-1 300.000.000 [addr-2 1.000.000]^~):zigs
       (account addr-2 200.000.000 ~):zigs
@@ -83,56 +78,153 @@
   ^-  chain:engine
   [state ~]
 ::
-::  tests for %give
-::
-++  test-zz-basic-multisig-give  ^-  test-txn
+++  get-signed-transaction
+  |=  calls=(list call:smart)
+  ^-  transaction:smart
   =/  my-call=call:smart
-    :+  id.p:multisig-pact
+    :+  id.p:pact:multisig
       0x0
     :+  %execute
-      my-multisig-id
-    :_  ~
-    :+  id.p:pact:zigs  0x0
-    [%give 0xdead.beef 500.000 (id:zigs id.p:multisig-pact)]
+      id:multisig
+    calls
   =/  =typed-message:smart
-    :+  id.p:multisig-pact
-      execute-jold-hash:multisig-lib
-    :+  my-call
+    :+  id.p:pact:multisig                 :: domain
+      execute-jold-hash:multisig-lib       :: type-hash
+    :+  calls                              :: msg: [(list call) nonce deadline]
       nonce=8
     deadline=1.000
   =/  hash  `@uvI`(shag:smart typed-message)
-  =/  tx=transaction:smart
-    :+  fake-sig
-      :*  %validate
-          my-multisig-id
-          ::  sig map
-          %-  make-pmap:smart
-          :~  :-  addr-1
-              %+  ecdsa-raw-sign:secp256k1:secp:crypto
-              hash  private-key:core-1
-              :-  addr-2
-              %+  ecdsa-raw-sign:secp256k1:secp:crypto
-              hash  private-key:core-2
-              :-  addr-3
-              %+  ecdsa-raw-sign:secp256k1:secp:crypto
-              hash  private-key:core-3
-          ==
-          ::
-          deadline=1.000
-          my-call
-      ==
-    [*caller:smart ~ id.p:multisig-pact [1 200.000] default-town-id 0]
+  :+  fake-sig
+    :*  %validate
+        id:multisig
+        ::  sig map
+        %-  make-pmap:smart
+        :~  :-  addr-1
+            %+  ecdsa-raw-sign:secp256k1:secp:crypto
+            hash  private-key:core-1
+            :-  addr-2
+            %+  ecdsa-raw-sign:secp256k1:secp:crypto
+            hash  private-key:core-2
+            :-  addr-3
+            %+  ecdsa-raw-sign:secp256k1:secp:crypto
+            hash  private-key:core-3
+        ==
+        ::
+        deadline=1.000
+        my-call
+    ==
+  [*caller:smart ~ id.p:pact:multisig [1 200.000] default-town-id 0]
+::  tests for %give
+::
+++  test-zz-basic-multisig-give  ^-  test-txn
+    =/  tx
+      %-  get-signed-transaction
+      ^-  (list call:smart)
+      :_  ~                              
+      :+  id.p:pact:zigs  0x0
+      [%give 0xdead.beef 500.000 (id:zigs id.p:pact:multisig)]
   :^    chain
       [sequencer default-town-id batch=1 eth-block-height=999]
     tx
-  :*  gas=~  ::  we don't care
+  :*  gas=~
       errorcode=`%0
       ::  assert correct modified state
       :-  ~
       %-  make-chain-state
-      :~  (account:zigs id.p:multisig-pact 500.000 ~)
+      :~  (account:zigs id.p:pact:multisig 500.000 ~)
           (account 0xdead.beef 500.000 ~):zigs
-          (my-multisig [(make-pset:smart ~[addr-1 addr-2 addr-3]) 8 2])
+          (our:multisig [(make-pset:smart ~[addr-1 addr-2 addr-3]) 2 8])
+      ==
+      burned=`~
+      events=`~
+  ==
+++  test-zzz-create-many-members  ^-  test-txn
+  =/  member-set  (make-pset:smart ~[0xdead 0xbeef 0xcafe 0xbabe])
+  =/  =calldata:smart  [%create 3 member-set]
+  =/  tx=transaction:smart  [fake-sig calldata create-shell]
+  ::
+  =*  con-id  id.p:uninitialized-pact:multisig
+  =/  output-item      
+    ^-  item:smart
+    :*  %&  (hash-data:smart con-id con-id default-town-id 0)
+        con-id
+        con-id
+        default-town-id
+        0  %multisig
+        [member-set 3 0]
+    ==
+  :^    chain
+      [sequencer default-town-id batch=1 eth-block-height=0]
+    tx
+  :*  gas=~
+      errorcode=`%0
+      ::  modified
+      :-  ~
+      %-  make-chain-state
+      :~
+        output-item
+      == 
+      burned=`~
+      events=`~
+  ==
+::
+++  test-zz-execute-direct  ^-  test-txn
+  =/  calldata  
+    :+  %execute
+      id:multisig
+    :_  ~
+    :+  id.p:pact:zigs  0x0
+    [%give 0xdead.beef 500.000 (id:zigs id.p:pact:multisig)]
+  ::
+  =/  tx=transaction:smart  [fake-sig calldata multi-shell]
+  :^    chain
+      [sequencer default-town-id batch=1 eth-block-height=0]
+    tx
+  :*  gas=~
+      errorcode=`%6
+      modified=`~  :: direct call to %execute fails
+      burned=`~
+      events=`~
+  ==
+::
+++  test-zz-set-threshold
+  =/  tx 
+    %-  get-signed-transaction
+    ^-  (list call:smart)
+    :_  ~
+    :+  id.p:pact:multisig  0x0
+    [%set-threshold id:multisig 3]
+ ::
+ :^    chain
+      [sequencer default-town-id batch=1 eth-block-height=999]
+    tx
+  :*  gas=~
+      errorcode=`%0
+      :-  ~
+      %-  make-chain-state
+      :~  
+          (our:multisig [(make-pset:smart ~[addr-1 addr-2 addr-3]) 3 8])
+      ==
+      burned=`~
+      events=`~
+  ==
+++  test-zz-add-member
+  =/  tx 
+    %-  get-signed-transaction
+    ^-  (list call:smart)
+    :_  ~
+    :+  id.p:pact:multisig  0x0
+    [%add-member id:multisig 0xdead.beef.cafe.babe]
+ ::
+ :^    chain
+      [sequencer default-town-id batch=1 eth-block-height=999]
+    tx
+  :*  gas=~ 
+      errorcode=`%0
+      :-  ~
+      %-  make-chain-state
+      :~  
+          (our:multisig [(make-pset:smart ~[addr-1 addr-2 addr-3 0xdead.beef.cafe.babe]) 2 8])
       ==
       burned=`~
       events=`~
