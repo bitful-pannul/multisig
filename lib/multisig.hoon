@@ -12,34 +12,25 @@
         %multisig
       %-  pairs
       :_  ~
-      [`@tas`(scot %ux id.up) (enjs-msig msig.up)]
-    ::
-        %multisig-on
-      %-  pairs
-      :_  ~
-      [`@tas`(scot %ux id.up) (enjs-on-multisig multisig.up)]
+      [`@tas`(scot %ux id.up) (enjs-multisig multisig.up)]
     ::
         %multisigs
       %-  pairs
       %+  turn  ~(tap by msigs.up)
-      |=  [=id =msig]
-      [`@tas`(scot %ux id) (enjs-msig msig)]
+      |=  [=id =multisig]
+      [`@tas`(scot %ux id) (enjs-multisig multisig)]
     ::
         %proposal
       %-  pairs
       :_   ~
-      :-  `@tas`(scot %ux hash.up)
-      ::  revise if this is good for frontend 
-      ?:  ?=(%.y -.proposal.up)
-        (enjs-on-proposal +.proposal.up)
-      (enjs-off-proposal +.proposal.up)
+      :-  `@tas`(rap 3 (scot %ux id.up) '/' (scot %ux hash.up) ~)
+      (enjs-proposal proposal.up)
     ::
         %vote 
       %-  pairs
       :~  [%id %s (scot %ux id.up)]
           [%hash %s (scot %ux hash.up)]
           [%address %s (scot %ux address.up)]
-          [%aye %s (scot %ud aye.up)]           :: fix
       ==
     :: 
         %execute
@@ -76,67 +67,27 @@
         %notif
       [%s message.up]
     ==
-  ++  enjs-msig
-    |=  =msig
-    ^-  json
-    %-  pairs
-    :~  [%name %s name.msig]
-        [%members a+(turn ~(tap in members.msig) |=(a=@ux s+(scot %ux a)))]
-        [%ships a+(turn ~(tap in ships.msig) ship)]
-        [%threshold %s (scot %ud threshold.msig)]
-        [%on-pending (enjs-on-pending on-pending.msig)]
-        [%off-pending (enjs-off-pending off-pending.msig)]
-    ==
   ++  enjs-multisig
     |=  =multisig
     ^-  json
     %-  pairs
     :~  [%name %s name.multisig]
         [%ships a+(turn ~(tap in ships.multisig) ship)]
-        [%pending (enjs-off-pending pending.multisig)]
-    ==
-  ++  enjs-on-multisig
-    |=  m=multisig-state:con
-    ^-  json
-    %-  pairs
-    :~  [%members a+(turn ~(tap pn members.m) |=(a=@ux s+(scot %ux a)))]
-        [%threshold %s (scot %ud threshold.m)]
-        [%executed a+(turn executed.m |=(a=@ux s+(scot %ux a)))]
-        [%pending (enjs-on-pending pending.m)]
-    ==
-  ++  enjs-on-pending
-    |=  m=(pmap @ux proposal:con)
-    ^-  json
-    %-  pairs
-    %+  turn  ~(tap py m)
-    |=  [hash=@ux =proposal:con]
-    [`@tas`(scot %ux hash) (enjs-on-proposal proposal)]
-  ++  enjs-on-proposal
-    |=  =proposal:con
-    ^-  json
-    %-  pairs
-    :~  [%calls %s (scot %ud (jam calls.proposal))]
-        [%votes (enjs-votes votes.proposal)]
-        [%ayes %s (scot %ud ayes.proposal)]
-        [%nays %s (scot %ud nays.proposal)]
+        [%pending (enjs-proposals pending.multisig)]
+        [%executed (enjs-proposals executed.multisig)]
+        [%members a+(turn ~(tap in members.multisig) |=(a=@ux s+(scot %ux a)))]
+        [%threshold s+(scot %ud threshold.multisig)]
+        [%nonce s+(scot %ud nonce.multisig)]
     ==
   ::
-  ++  enjs-votes
-    |=  v=(pmap @ux ?)
-    ^-  json
-    %-  pairs
-    %+  turn  ~(tap py v)
-    |=  [a=@ux aye=?]
-    [`@tas`(scot %ux a) %s ?:(aye 'true' 'false')]
-  ::
-   ++  enjs-off-pending
+   ++  enjs-proposals
     |=  m=(map @ux proposal)
     ^-  json
     %-  pairs
     %+  turn  ~(tap by m)
     |=  [hash=@ux =proposal]
-    [`@tas`(scot %ux hash) (enjs-off-proposal proposal)]
-  ++  enjs-off-proposal
+    [`@tas`(scot %ux hash) (enjs-proposal proposal)]
+  ++  enjs-proposal
     |=  =proposal
     ^-  json
     %-  pairs
@@ -144,16 +95,8 @@
         [%desc %s desc.proposal]
         [%calls %s (scot %ud (jam calls.proposal))]
         [%deadline %s (scot %ud deadline.proposal)]
-        [%sigs (enjs-sigs sigs.proposal)]
+        [%sigs a+(turn ~(tap in ~(key by sigs.proposal)) |=(a=@ux s+(scot %ux a)))]
     ==
-  ++  enjs-sigs
-    |=  s=(map @ux *)
-    ::  won't pass sigs, if they're here, it's an aye
-    ^-  json
-    %-  pairs
-    %+  turn  ~(tap by s)
-    |=  [a=@ux *]
-    [`@tas`(scot %ux a) %s 'true']
   --
 ++  dejs
   =,  dejs:^format
@@ -173,7 +116,7 @@
         ::
         [%find-addys (ot ~[[%ships (as (se %p))]])]
         [%share dejs-share]
-        [%load (ot ~[[%multisig (se %ux)] [%off (mu dejs-load-off)]])]
+        [%load (ot ~[[%multisig (se %ux)] [%off (mu dejs-load)]])]
         [%accept (ot ~[[%multisig (se %ux)] [%ship (se %p)]])]
       ==
     ++  dejs-create
@@ -184,18 +127,11 @@
           [%members (as (se %ux))]
           [%name so]
       ==
-    ++  dejs-dist
-      ^-  $-(json [to=@ux amount=@ud])
-      %-  ot
-      :~  [%to (se %ux)]
-          [%amount (se %ud)]
-      ==
     ++  dejs-propose
       %-  ot
       :~  [%address (se %ux)]
           [%multisig (se %ux)]
           [%calls (se %ud)]   :: jam/cue
-          [%on-chain bo]
           [%hash (mu (se %ux))]
           [%deadline (se %ud)]
           [%name so]
@@ -206,23 +142,20 @@
       :~  [%address (se %ux)]
           [%multisig (se %ux)]
           [%hash (se %ux)]
-          [%aye bo]
-          [%on-chain bo]
           [%sig ul]          :: signed in-app
       ==
     ++  dejs-execute
       %-  ot
-      :~  [%address (se %ux)]
-          [%multisig (se %ux)]
+      :~  [%multisig (se %ux)]
           [%hash (se %ux)]
       ==
     ++  dejs-share
       %-  ot
       :~  [%multisig (se %ux)]
-          [%state ul]       :: not from fe 
           [%ship (mu (se %p))]
+          [%state ul]        :: not from fe 
       ==
-    ++  dejs-load-off
+    ++  dejs-load
       %-  ot
       :~  [%name so]
           [%ships (as (se %p))]

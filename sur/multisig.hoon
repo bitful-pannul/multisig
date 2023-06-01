@@ -2,21 +2,26 @@
 :: 
 ::  deploy a multisig contract & data item
 ::
-::  off-chain and on-chain data live separately,
-::  but are connected by proposal hashes. 
+::  account abstraction enabled multisig,
+::  exclusively uses off-chain signatures.
 ::
 /+  *zig-sys-smart
-/=  con  /con/lib/multisig  :: on-chain types in con
+/=  con  /con/lib/multisig  :: on-chain noun type in con
 /*  multisig-jam  %jam  /con/compiled/multisig/jam
 |%
-::  off-chain [ALL]
 +$  multisig  
   $:  name=@t
       ships=(set ship)
       pending=proposals
+      executed=proposals
+      ::  on
+      members=(pset address)
+      threshold=@ud
+      nonce=@ud
   ==
 +$  proposals  (map =hash =proposal)
-::
+::  Q: keep calls, just format them correctly upon execute?
+::  actually, signíng shits the bed a little that way. 
 +$  proposal
   $:  name=@t
       desc=@t
@@ -27,34 +32,24 @@
 +$  sigs  (map address =sig)
 +$  action
   $%  [%create =address threshold=@ud ships=(set ship) members=(set address) name=@t]
-      [%propose =address multisig=id calls=@ on-chain=? hash=(unit hash) deadline=@ud name=@t desc=@t]
-      [%vote =address multisig=id =hash aye=? on-chain=? sig=(unit sig)]
-      [%execute =address multisig=id =hash]
+      [%propose =address multisig=id calls=@ hash=(unit hash) deadline=@ud name=@t desc=@t]
+      [%vote =address multisig=id =hash sig=(unit sig)]
+      [%execute multisig=id =hash]
       ::
       :: [%edit multisig=id name=(unit @t) remove/add ships]
       [%find-addys ships=(set ship)]
-      [%share multisig=id state=(unit multisig) ship=(unit ship)]
+      [%share multisig=id ship=(unit ship) state=(unit multisig)]
       [%load multisig=id off=(unit [name=@t ships=(set ship)])]
       [%accept multisig=id =ship]
   ==
 ::
-::  combined on/off type for scry/sub updates
-+$  msig  
-  $:  name=@t
-      members=(set address)
-      ships=(set ship)
-      threshold=@ud
-      on-pending=(map hash proposal:con)
-      off-pending=(map hash proposal)
-  ==
-::
 +$  update
-  $%  [%multisigs msigs=(map id msig)]
-      [%multisig =id =msig]
-      [%multisig-on =id multisig=multisig-state:con]
+  $%  
+      [%multisigs msigs=(map id multisig)]
+      [%multisig =id =multisig]
       ::
-      [%proposal =hash proposal=(each proposal:con proposal)]
-      [%vote =id =hash =address aye=?]
+      [%proposal =id =hash =proposal]
+      [%vote =id =hash =address] 
       [%execute =id =hash]
       ::
       [%invite =id =ship =multisig]
@@ -67,24 +62,23 @@
 ::
 ++  multisig-code  [- +]:(cue multisig-jam)
 ++  publish-contract  0x1111.1111
-++  execute-jold-hash  0x1bdb.45ec.612a.7371.4ce8.f462.0108.5ab7
+++  execute-jold-hash  0x74cb.8490.d479.82bb.e371.8ead.78f0.c68f
 ++  execute-json
   %-  need
   %-  de-json:^html
   ^-  cord
-  '''
-  [
-    {"multisig": "ux"},
-    {"calls": [
-      "list",
-      [
-        {"contract": "ux"},
-        {"town": "ux"},
-        {"calldata": [{"p": "tas"}, {"q": "*"}]}
-      ]
-    ]},
-    {"nonce": "ud"},
-    {"deadline": "ud"}
-  ]
-  '''
+   '''
+   [
+     {"calls": [
+       "list",
+       [
+         {"contract": "ux"},
+         {"town": "ux"},
+         {"calldata": [{"p": "tas"}, {"q": "*"}]}
+       ]
+     ]},
+     {"nonce": "ud"},
+     {"deadline": "ud"}
+   ]
+   '''
 --
