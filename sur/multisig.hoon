@@ -61,24 +61,23 @@
 ::
 ++  multisig-code  [- +]:(cue multisig-jam)
 ++  publish-contract  0x1111.1111
-++  execute-jold-hash  0x1bdb.45ec.612a.7371.4ce8.f462.0108.5ab7
+++  execute-jold-hash  0x74cb.8490.d479.82bb.e371.8ead.78f0.c68f
 ++  execute-json
   %-  need
   %-  de-json:^html
   ^-  cord
-  '''
-  [
-    {"multisig": "ux"},
-    {"calls": [
-      "list",
-      [
-        {"contract": "ux"},
-        {"town": "ux"},
-        {"calldata": [{"p": "tas"}, {"q": "*"}]}
-      ]
-    ]},
-    {"nonce": "ud"},
-    {"deadline": "ud"}
-  ]
-  '''
+   '''
+   [
+     {"calls": [
+       "list",
+       [
+         {"contract": "ux"},
+         {"town": "ux"},
+         {"calldata": [{"p": "tas"}, {"q": "*"}]}
+       ]
+     ]},
+     {"nonce": "ud"},
+     {"deadline": "ud"}
+   ]
+   '''
 --

@@ -124,9 +124,9 @@
       ::  off-chain proposal, poke ships 
       =+  m=(~(got by msigs) multisig.act)
       =/  typed-message  
-        :+  multisig.act
+        :+  (need (multisig-source multisig.act))
           execute-jold-hash
-        [multisig.act calls +(need (nonce multisig.act)) deadline.act]
+        [calls +(need (nonce multisig.act)) deadline.act]
       ::
       =+  hash=(shag:merk typed-message)
       :-  %+  murn  ~(tap in ships.m)
@@ -396,6 +396,14 @@
   ::
       [%x %invites ~]
     ``multisig-update+!>(`update`[%invites invites])
+  ::
+      [%x %existing @ ~]
+    ::  check for existing multisig deployed by address
+    =+  address=(slav %ux i.t.t.path)
+    =+  con=(hash-pact 0x0 address 0x0 multisig-code)
+    =+  id=(hash-data con con 0x0 0)
+    =+  (need (get-multisig id))
+    ``multisig-update+!>(`update`[%multisig id -])
   ==
 ::
 ++  nonce
