@@ -22,13 +22,17 @@
     def   ~(. (default-agent this %.n) bowl)
     hc    ~(. +> [bowl ~])
 ::
-++  on-init  on-init:def
+++  on-init
+  :_  this(state *_state)
+  :_  ~
+  watch-indexer:hc
 ++  on-save  !>(state)
 ++  on-load
-  |=  =old=vase
+  |=  =vase
   ^-  (quip card _this)
-  `this(state !<(state-0 old-vase))
-::
+  :_  this(state !<(state-0 vase))
+  :_  ~
+  watch-indexer:hc
 ++  on-poke
   |=  [=mark =vase]
   ^-  (quip card _this)
@@ -69,16 +73,16 @@
     :-  ~
     =-  this(msigs.state -, pending-i ~)
     ::  update all msigs, then verify invites
-    =/  up
+    =/  up=(map @ux multisig)
       %-  ~(urn by msigs)
       |=  [=id =multisig]
-      ?~  m=(get-multisig id)
+      ?~  m=(get-multisig:hc id)
         multisig
       u.m
     =-  (~(gas by up) -)
     %+  murn  ~(tap by pending-i)
       |=  [[=id =ship] =multisig]
-      ?~  msig=(get-multisig id)
+      ?~  msig=(get-multisig:hc id)
         ~
       :-  ~
       :-  id
@@ -102,9 +106,9 @@
       %create
     ?>  =(src our):bowl
     ::  get id of multisig before creating it.
-    =+  con=(hash-pact 0x0 address.act 0x0 multisig-code)
-    =+  id=(hash-data con con 0x0 0)
-    =+  [name.act ships.act]
+    =+  con=(hash-pact:eng 0x0 address.act 0x0 multisig-code)
+    =+  id=(hash-data:eng con con 0x0 0)
+    =+  [name.act (~(put in ships.act) our.bowl)]
     :_  state(pending-m `-)  :_  ~
     %-  generate-tx
     :*  `[%multisig /create/(scot %ux id)]  
@@ -123,12 +127,12 @@
     ?:  =(our src):bowl
       ::  off-chain proposal, poke ships 
       =+  m=(~(got by msigs) multisig.act)
-      =/  typed-message  
+      =/  =typed-message  
         :+  (need (multisig-source multisig.act))
           execute-jold-hash
-        [calls +(need (nonce multisig.act)) deadline.act]
+        [calls (add 1 (need (nonce multisig.act))) deadline.act]
       ::
-      =+  hash=(shag:merk typed-message)
+      =/  =hash  (shag:merk typed-message)
       :-  %+  murn  ~(tap in ships.m)
         |=  =ship
         ?:  =(ship our.bowl)  ~
@@ -177,7 +181,7 @@
     :_  ~
     %-  generate-tx
     :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
-        from=address.act
+        from=0x0  ::address.act
         contract=con
         town=0x0
         :*  %validate
@@ -207,7 +211,7 @@
             domain=(need (multisig-source multisig.act))
             type=execute-json
             :+  calls.prop
-              +(need (nonce multisig.act))
+              (add 1 (need (nonce multisig.act)))
             deadline.prop
       ==  ==
     ::  someone voted
@@ -228,6 +232,10 @@
     ::  scry out multisig and add to our state/tracked
     =+  msig=(get-multisig multisig.act)
     ?~  msig  !!
+    =:  name.u.msig   ?~(off.act name.u.msig name.u.off.act)
+        ships.u.msig  ?~(off.act ships.u.msig ships.u.off.act)
+        ships.u.msig  (~(put in ships.u.msig) our.bowl) 
+    ==
     :-  ~
     state(msigs (~(put by msigs) multisig.act u.msig))
   ::
@@ -242,7 +250,7 @@
       :*  %pass   /share
           %agent  [(need ship.act) %multisig]
           %poke   %multisig-action
-          !>([%add-ship multisig.act `m ~])
+          !>(`action`[%share multisig.act ~ `m])
       ==
     ::  someone inviting us 
     ?~  state.act  `state 
@@ -257,14 +265,19 @@
       %accept
     ?>  =(our src):bowl
     =+  m=(~(got by invites) [multisig.act ship.act])  
+    ::  =.  might be unnecessary, but helps propagation
+    =.  ships.m  (~(put in ships.m) ship.act)
+    =.  ships.m  (~(put in ships.m) our.bowl)
     ?~  msig=(get-multisig multisig.act)
-      :_  =-  state(pending-i -)
-          (~(put by pending-i) [multisig.act ship.act] m)
-      :_  ~
-      %-  give-update
+      :-  :_  ~
+      %-  give-update  
       [%notif 'did not find on-chain multisig, waiting for next batch.']
-    :-  ~
-    ::  (give-update %multisig 
+      %=  state
+        pending-i  (~(put by pending-i) [multisig.act ship.act] m)
+        invites    (~(del by invites) [multisig.act ship.act])
+      ==
+    :-  :_  ~
+    (give-update [%multisig multisig.act m])
     %=  state
       msigs       (~(put by msigs) multisig.act m)
       invites   (~(del by invites) [multisig.act ship.act])
@@ -306,6 +319,7 @@
         :*  name.u.pending-m
             ships.u.pending-m
             ~
+            ~
             members.m
             threshold.m
             nonce.m
@@ -318,9 +332,8 @@
       :*  %pass   /share
           %agent  [ship %multisig]
           %poke   %multisig-action
-          !>(`action`[%share id `msig ~])
+          !>(`action`[%share id ~ `msig])
       == 
-      ::  give this to them folks. 
       (give-update [%multisig id msig])
       %=  state
         msigs       (~(put by msigs) id msig)
@@ -336,8 +349,16 @@
       =/  m=state:con
         =+  (got:big:eng modified.output.update id)
         ;;(state:con ?>(?=(%& -.-) noun.p.-))
-      ::  fix, update on-chain parts
-      :_  state
+      =/  msig       (~(got by msigs) id)
+      =/  =proposal  (~(got by pending.msig) hash)
+      ::
+      =:  members.msig    members.m
+          threshold.msig  threshold.m
+          nonce.msig      nonce.m
+          executed.msig   (~(put by executed.msig) hash proposal)
+          pending.msig    (~(del by pending.msig) hash)
+      ==
+      :_  state(msigs (~(put by msigs) id msig))
       :_  ~
       (give-update [%execute id hash])
     ==
@@ -400,8 +421,8 @@
       [%x %existing @ ~]
     ::  check for existing multisig deployed by address
     =+  address=(slav %ux i.t.t.path)
-    =+  con=(hash-pact 0x0 address 0x0 multisig-code)
-    =+  id=(hash-data con con 0x0 0)
+    =+  con=(hash-pact:eng 0x0 address 0x0 multisig-code)
+    =+  id=(hash-data:eng con con 0x0 0)
     =+  (need (get-multisig id))
     ``multisig-update+!>(`update`[%multisig id -])
   ==
@@ -436,8 +457,9 @@
 ++  multisig-noun
   |=  =id
   ^-  (unit state:con)
-  =+  (need (multisig-item id))
-  `;;(state:con noun.-)
+  ?~  item=(multisig-item id)
+    ~
+  `;;(state:con noun:u.item)
 ::
 ++  get-multisig
   |=  =id
@@ -446,11 +468,13 @@
     ~  :: no multisig found on-chain
   ?~  off=(~(get by msigs) id)
     :-  ~
-    ['no name' ~ ~ [members threshold nonce]:u.noun]
+    ::  revise where this is used.
+    ['no name' ~ ~ ~ [members threshold nonce]:u.noun]
   :-  ~
   :*  name.u.off
       ships.u.off
       pending.u.off
+      executed.u.off
       members.u.noun
       threshold.u.noun
       nonce.u.noun

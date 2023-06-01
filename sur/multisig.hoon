@@ -13,6 +13,7 @@
   $:  name=@t
       ships=(set ship)
       pending=proposals
+      executed=proposals
       ::  on
       members=(pset address)
       threshold=@ud
@@ -33,11 +34,11 @@
   $%  [%create =address threshold=@ud ships=(set ship) members=(set address) name=@t]
       [%propose =address multisig=id calls=@ hash=(unit hash) deadline=@ud name=@t desc=@t]
       [%vote =address multisig=id =hash sig=(unit sig)]
-      [%execute =address multisig=id =hash]
+      [%execute multisig=id =hash]
       ::
       :: [%edit multisig=id name=(unit @t) remove/add ships]
       [%find-addys ships=(set ship)]
-      [%share multisig=id state=(unit multisig) ship=(unit ship)]
+      [%share multisig=id ship=(unit ship) state=(unit multisig)]
       [%load multisig=id off=(unit [name=@t ships=(set ship)])]
       [%accept multisig=id =ship]
   ==

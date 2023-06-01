@@ -73,13 +73,14 @@
     %-  pairs
     :~  [%name %s name.multisig]
         [%ships a+(turn ~(tap in ships.multisig) ship)]
-        [%pending (enjs-pending pending.multisig)]
+        [%pending (enjs-proposals pending.multisig)]
+        [%executed (enjs-proposals executed.multisig)]
         [%members a+(turn ~(tap in members.multisig) |=(a=@ux s+(scot %ux a)))]
         [%threshold s+(scot %ud threshold.multisig)]
-        [%executed s+(scot %ud threshold.multisig)]
+        [%nonce s+(scot %ud nonce.multisig)]
     ==
   ::
-   ++  enjs-pending
+   ++  enjs-proposals
     |=  m=(map @ux proposal)
     ^-  json
     %-  pairs
@@ -145,15 +146,14 @@
       ==
     ++  dejs-execute
       %-  ot
-      :~  [%address (se %ux)]
-          [%multisig (se %ux)]
+      :~  [%multisig (se %ux)]
           [%hash (se %ux)]
       ==
     ++  dejs-share
       %-  ot
       :~  [%multisig (se %ux)]
-          [%state ul]        :: not from fe 
           [%ship (mu (se %p))]
+          [%state ul]        :: not from fe 
       ==
     ++  dejs-load
       %-  ot
