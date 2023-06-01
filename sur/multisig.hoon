@@ -19,9 +19,9 @@
       threshold=@ud
       nonce=@ud
   ==
+::  map by nonce instead? or both.
+::  nonce needed to discard/execute pending proposals on batch
 +$  proposals  (map =hash =proposal)
-::  Q: keep calls, just format them correctly upon execute?
-::  actually, signíng shits the bed a little that way. 
 +$  proposal
   $:  name=@t
       desc=@t

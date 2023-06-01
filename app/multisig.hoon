@@ -179,17 +179,22 @@
     ::  optional, veriff sigs off-chain?
     :_  state
     :_  ~
-    %-  generate-tx
-    :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
-        from=0x0  ::address.act
-        contract=con
-        town=0x0
-        :*  %validate
-            multisig.act
-            sigs.prop
-            deadline.prop
-            (format-calldata multisig.act con calls.prop)
-    ==  ==  
+    :*  %pass   /execute
+        %agent  [our.bowl %uqbar]
+        %poke   %wallet-poke
+        !>  ^-  wallet-poke:wallet
+        :*  %unsigned-transaction
+            `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
+            con
+            0x0
+            [1 1.000.000]
+            :-  %noun
+            :*  %validate
+                multisig.act
+                sigs.prop
+                deadline.prop
+                (format-calldata multisig.act con calls.prop)
+    ==  ==  ==
   ::
       %vote
     ?:  =(our src):bowl
