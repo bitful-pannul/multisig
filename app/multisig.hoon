@@ -197,21 +197,24 @@
     =/  =action:^con
       ;;(action:^con calldata.transaction.u.receipt.act)
     ::  sneaky seq-receipt attack possible with malformed nonce?
-    ::  otherwise take this noun, store it and give-update
-    ::  =/  m=state:con
-    ::    =+  (got:big:eng modified.output.update id)
-    ::    ;;(state:con ?>(?=(%& -.-) noun.p.-))
+    =/  msig=state:^con
+      =+  (got:big:eng modified.output.u.receipt.act multisig.act)
+      ;;(state:^con ?>(?=(%& -.-) noun.p.-))
     ::  
     ?>  ?&  ?=(%validate -.action)
-            =(%execute -.calldata.call.action)
-            =([multisig.act calls.prop] +.calldata.call.action)
+            =([%execute multisig.act calls.prop] calldata.call.action)
         ==
-    :-  ~
-    =-  state(msigs (~(put by msigs) multisig.act -))
-    %=  m
-      pending   (~(del by pending.m) hash.act)
-      executed  (~(put by executed.m) hash.act prop)
-    ==
+    =+  %=  m
+          members    members.msig
+          threshold  threshold.msig
+          nonce      nonce.msig
+          pending    (~(del by pending.m) hash.act)
+          executed   (~(put by executed.m) hash.act prop)
+        ==
+    :_  state(msigs (~(put by msigs) multisig.act -))
+    :-  (give-update [%execute multisig.act hash.act])
+    :-  (give-update [%multisig multisig.act -])
+    ~
   ::
       %vote
     =+  m=(~(got by msigs) multisig.act)
