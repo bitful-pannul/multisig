@@ -1,4 +1,8 @@
-### multisig gall app
+## multisig
 
-Used to deploy multisig contracts, and coordinate proposals with the people in them either off-chain or on-chain.
+Used to deploy account abstracted multisigs, create proposals and vote on them off-chain! 
+
+Run tests with `-zig!transaction-sim /=multisig=/tests/contracts/multisig/hoon`
+
+Gall app actions like %create, %propose, %vote and %execute can be found in `sur/multisig.hoon`
 
