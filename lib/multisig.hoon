@@ -146,8 +146,10 @@
       ==
     ++  dejs-execute
       %-  ot
-      :~  [%multisig (se %ux)]
+      :~  [%address (se %ux)]
+          [%multisig (se %ux)]
           [%hash (se %ux)]
+          [%receipt ul]      :: not from fe
       ==
     ++  dejs-share
       %-  ot

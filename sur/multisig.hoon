@@ -5,6 +5,7 @@
 ::  account abstraction enabled multisig,
 ::  exclusively uses off-chain signatures.
 ::
+/-  uqbar=zig-uqbar
 /+  *zig-sys-smart
 /=  con  /con/lib/multisig  :: on-chain noun type in con
 /*  multisig-jam  %jam  /con/compiled/multisig/jam
@@ -20,8 +21,6 @@
       nonce=@ud
   ==
 +$  proposals  (map =hash =proposal)
-::  Q: keep calls, just format them correctly upon execute?
-::  actually, signíng shits the bed a little that way. 
 +$  proposal
   $:  name=@t
       desc=@t
@@ -34,13 +33,14 @@
   $%  [%create =address threshold=@ud ships=(set ship) members=(set address) name=@t]
       [%propose =address multisig=id calls=@ hash=(unit hash) deadline=@ud name=@t desc=@t]
       [%vote =address multisig=id =hash sig=(unit sig)]
-      [%execute multisig=id =hash]
-      ::
+      [%execute =address multisig=id =hash receipt=(unit [tx=hash sequencer-receipt:uqbar])]
+      ::        removed when %wallet supports unsigned txs
       :: [%edit multisig=id name=(unit @t) remove/add ships]
       [%find-addys ships=(set ship)]
       [%share multisig=id ship=(unit ship) state=(unit multisig)]
       [%load multisig=id off=(unit [name=@t ships=(set ship)])]
       [%accept multisig=id =ship]
+      [%clear-pending multisig=id hash=(unit hash)]
   ==
 ::
 +$  update

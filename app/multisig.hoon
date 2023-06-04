@@ -8,6 +8,7 @@
       :: pending tx:s 
       pending-m=(unit [name=@t ships=(set ship)])
       pending-i=(map [@ux @p] multisig)
+      :: trackers w/ orgs integration? 
   ==
 +$  card  card:agent:gall
 --
@@ -124,9 +125,9 @@
   ::
       %propose
     =+  calls=;;((list call) (cue calls.act))
+    =+  m=(~(got by msigs) multisig.act)
     ?:  =(our src):bowl
       ::  off-chain proposal, poke ships 
-      =+  m=(~(got by msigs) multisig.act)
       =/  =typed-message  
         :+  (need (multisig-source multisig.act))
           execute-jold-hash
@@ -155,7 +156,6 @@
       ^-  proposal
       [name.act desc.act calls ~ deadline.act]
     ::  someone is poking us with off-chain proposal,  
-    =+  m=(~(got by msigs) multisig.act)
     ::  what if my off-chain ships are outdated? 
     ::  ?>  (~(has in ships.m) src.bowl)  
     ::  solution: always sign first proposal, verify
@@ -172,32 +172,57 @@
     [name.act desc.act calls ~ deadline.act]
   :: 
       %execute
-    ?>  =(our src):bowl
     =+  m=(~(got by msigs) multisig.act)
     =+  con=(need (multisig-source multisig.act))
     =/  prop=proposal  (~(got by pending.m) hash.act)
-    ::  optional, veriff sigs off-chain?
-    :_  state
-    :_  ~
-    %-  generate-tx
-    :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
-        from=0x0  ::address.act
-        contract=con
-        town=0x0
-        :*  %validate
-            multisig.act
-            sigs.prop
-            deadline.prop
-            (format-calldata multisig.act con calls.prop)
-    ==  ==  
+    ?:  =(our src):bowl
+      ::  optional, veriff sigs off-chain?
+      :_  state
+      :_  ~
+      %-  generate-tx
+      :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
+          from=address.act
+          contract=con
+          town=0x0
+          :*  %validate
+              multisig.act
+              sigs.prop
+              deadline.prop
+              (format-calldata multisig.act con calls.prop)
+      ==  ==
+    ::  someone executed a proposal, verify receipt & ingest.
+    ?~  receipt.act  !!
+    =+  [ship-sig uqbar-sig position transaction output]:u.receipt.act
+    ?>  (verify-seq-receipt -) 
+    =/  =action:^con
+      ;;(action:^con calldata.transaction.u.receipt.act)
+    ::  sneaky seq-receipt attack possible with malformed nonce?
+    =/  msig=state:^con
+      =+  (got:big:eng modified.output.u.receipt.act multisig.act)
+      ;;(state:^con ?>(?=(%& -.-) noun.p.-))
+    ::  
+    ?>  ?&  ?=(%validate -.action)
+            =([%execute multisig.act calls.prop] calldata.call.action)
+        ==
+    =+  %=  m
+          members    members.msig
+          threshold  threshold.msig
+          nonce      nonce.msig
+          pending    (~(del by pending.m) hash.act)
+          executed   (~(put by executed.m) hash.act prop)
+        ==
+    :_  state(msigs (~(put by msigs) multisig.act -))
+    :-  (give-update [%execute multisig.act hash.act])
+    :-  (give-update [%multisig multisig.act -])
+    ~
   ::
       %vote
+    =+  m=(~(got by msigs) multisig.act)
+    =+  con=(need (multisig-source multisig.act))
+    =/  prop=proposal  (~(got by pending.m) hash.act)
     ?:  =(our src):bowl
       ::  vote on off-chain proposal. 
       ::  sign-message, then poke to ships.
-      =+  m=(~(got by msigs) multisig.act)
-      =+  con=(need (multisig-source multisig.act))
-      =/  prop=proposal  (~(got by pending.m) hash.act)
       :_  state  :_  ~
       :*  %pass   /sign
           %agent  [our.bowl %uqbar]
@@ -215,9 +240,7 @@
             deadline.prop
       ==  ==
     ::  someone voted
-    =+  m=(~(got by msigs) multisig.act)
     ?~  sig.act  !!
-    =/  prop=proposal  (~(got by pending.m) hash.act)
     ?>  (uqbar-validate:sig address.act hash.act u.sig.act)
     :-  :_  ~
     (give-update [%vote multisig.act hash.act address.act])
@@ -282,6 +305,15 @@
       msigs       (~(put by msigs) multisig.act m)
       invites   (~(del by invites) [multisig.act ship.act])
     ==
+  :: 
+      %clear-pending
+    =+  m=(~(got by msigs) multisig.act)
+    ?~  hash.act
+      :-  ~
+      state(msigs (~(put by msigs) multisig.act m(pending ~)))
+    :-  ~
+    =-  state(msigs (~(put by msigs) multisig.act -))
+        m(pending (~(del by pending.m) u.hash.act))
   ::
       %find-addys
     ::  perhaps vice versa could scry out address=>ship from social graph
@@ -359,8 +391,23 @@
           pending.msig    (~(del by pending.msig) hash)
       ==
       :_  state(msigs (~(put by msigs) id msig))
-      :_  ~
-      (give-update [%execute id hash])
+      :-  (give-update [%execute id hash])
+      :-  (give-update [%multisig id msig])
+      %+  murn  ~(tap in ships.msig)
+          |=  =ship
+          ?:  =(our.bowl ship)  ~
+          :-  ~
+          :*  %pass   /share-executed
+              %agent  [ship %multisig]
+              %poke   %multisig-action
+              !>  ^-  action
+              :*  %execute
+                  0x0
+                  id
+                  hash
+                  =+  [ship-sig uqbar-sig position transaction output]:update
+                  `[hash.update -]
+          ==  ==
     ==
   ::
       %signed-message
@@ -487,6 +534,25 @@
   :+  %execute
     id
   calls
+::
+++  verify-seq-receipt
+  |=  =sequencer-receipt:uqbar
+  =/  known-sequencer
+    .^  (unit (pair address ship))  %gx
+        (scot %p our.bowl)  %uqbar  (scot %da now.bowl)
+        /sequencer-on-town/(scot %ux town.transaction.sequencer-receipt)/noun
+      ==
+    ?~  known-sequencer
+      ~&  >>>  "multisig: failed to get sequencer info from %uqbar"
+    %.n
+    ?.  =(q.u.known-sequencer q.ship-sig.sequencer-receipt)
+      ~&  >>>  "multisig: received receipt from unknown sequencer"
+      %.n
+    ~|  "multisig: received invalid signature on sequencer receipt!"
+    =+  (sham |3:sequencer-receipt)
+    ?>  (validate:sig our.bowl ship-sig.sequencer-receipt - now.bowl)
+    ?>  (uqbar-validate:sig p.u.known-sequencer - uqbar-sig.sequencer-receipt)
+    %.y
 ::
 ++  generate-tx
   |=  [=origin:wallet from=@ux con=@ux town=@ux noun=*] 
