@@ -146,8 +146,7 @@
       ==
     ++  dejs-execute
       %-  ot
-      :~  [%address (se %ux)]
-          [%multisig (se %ux)]
+      :~  [%multisig (se %ux)]
           [%hash (se %ux)]
           [%receipt ul]      :: not from fe
       ==

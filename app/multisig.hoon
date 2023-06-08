@@ -179,17 +179,21 @@
       ::  optional, veriff sigs off-chain?
       :_  state
       :_  ~
-      %-  generate-tx
-      :*  `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
-          from=address.act
-          contract=con
-          town=0x0
-          :*  %validate
-              multisig.act
-              sigs.prop
-              deadline.prop
-              (format-calldata multisig.act con calls.prop)
-      ==  ==
+      :*  %pass   /execute
+          %agent  [our.bowl %uqbar]
+          %poke   %wallet-poke
+          !>  ^-  wallet-poke:wallet
+          :*  %unsigned-transaction
+              `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
+              con
+              0x0
+              :-  %noun
+              :*  %validate
+                  multisig.act
+                  sigs.prop
+                  deadline.prop
+                  (format-calldata multisig.act con calls.prop)
+      ==  ==  ==
     ::  someone executed a proposal, verify receipt & ingest.
     ?~  receipt.act  !!
     =+  [ship-sig uqbar-sig position transaction output]:u.receipt.act
@@ -401,13 +405,12 @@
               %agent  [ship %multisig]
               %poke   %multisig-action
               !>  ^-  action
-              :*  %execute
-                  0x0
+              :^    %execute
                   id
-                  hash
-                  =+  [ship-sig uqbar-sig position transaction output]:update
-                  `[hash.update -]
-          ==  ==
+                hash
+              =+  [ship-sig uqbar-sig position transaction output]:update
+              `[hash.update -]
+          ==
     ==
   ::
       %signed-message

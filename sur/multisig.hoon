@@ -33,8 +33,8 @@
   $%  [%create =address threshold=@ud ships=(set ship) members=(set address) name=@t]
       [%propose =address multisig=id calls=@ hash=(unit hash) deadline=@ud name=@t desc=@t]
       [%vote =address multisig=id =hash sig=(unit sig)]
-      [%execute =address multisig=id =hash receipt=(unit [tx=hash sequencer-receipt:uqbar])]
-      ::        removed when %wallet supports unsigned txs
+      [%execute multisig=id =hash receipt=(unit [tx=hash sequencer-receipt:uqbar])]
+      ::
       :: [%edit multisig=id name=(unit @t) remove/add ships]
       [%find-addys ships=(set ship)]
       [%share multisig=id ship=(unit ship) state=(unit multisig)]
