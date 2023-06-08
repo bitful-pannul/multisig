@@ -187,7 +187,6 @@
             `[%multisig /execute/(scot %ux multisig.act)/(scot %ux hash.act)]
             con
             0x0
-            [1 1.000.000]
             :-  %noun
             :*  %validate
                 multisig.act
