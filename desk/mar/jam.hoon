@@ -1,1 +1,1 @@
-../../arvo/mar/jam.hoon
+../../../uqbar-core/mar/jam.hoon

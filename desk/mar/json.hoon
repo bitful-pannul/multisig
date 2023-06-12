@@ -1,1 +1,1 @@
-../../base-dev/mar/json.hoon
+../../../landscape/mar/json.hoon
