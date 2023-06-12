@@ -55,9 +55,12 @@
   ^-  (quip card _this)
   ?>  =(src our):bowl
   ?+    path  ~|("watch to erroneous path" !!)
-  ::  path for frontend to connect to and receive
-  ::  all actively-flowing information. does not provide any initial state.
-    [%updates ~]  `this
+      [%updates ~]
+    :_  this
+    :~
+      [%give %fact ~ %multisig-update !>(`update`[%multisigs msigs])]
+      [%give %fact ~ %multisig-update !>(`update`[%invites invites])]
+    ==
   ==
 ++  on-agent  
   |=  [=wire =sign:agent:gall]

@@ -1,0 +1,113 @@
+// Swap.module.scss
+.swap-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.swap-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(to right, #a472d6, #ed6ea0, #ea4b6e);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 400px; // Add this line to set the max-width
+}
+
+.input-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.input-field {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  flex: 1; // Add this line
+}
+
+.swap-button {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  color: #222;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+  &:hover {
+    background-color: #f5f5f5;
+  }
+}
+
+
+.select-container {
+  position: relative;
+  flex: 1; // Add this line
+}
+
+.custom-select {
+  appearance: none;
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin: 0; // Add this line to remove the default margin
+  &:hover {
+    background-color: #f5f5f5;
+  }
+}
+
+.select-arrow {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #222;
+}
+
+.option {
+  background-color: #a472d6;
+  color: #fff;
+  padding: 0.25rem;
+  &:hover {
+    background-color: #ed6ea0;
+  }
+}
+
+.metrics-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.5rem;
+  background-color: #fdc5c5;
+  opacity: 0.8;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.bog-container {
+  display: flex;
+  width: auto;
+}

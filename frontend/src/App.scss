@@ -1,0 +1,19 @@
+html, body {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.splash {
+  padding: 40px 48px 80px;
+  flex-basis: content;
+  margin: 0 -48px;
+
+  @media only screen and (max-width: 600px) {
+    margin-top: -16px;
+    margin: -16px -16px 0;
+    padding: 40px 16px 80px;
+  }
+}
+
+.sigil-container > svg {
+  border-radius: 4px;
+}

@@ -1,0 +1,99 @@
+// Pools.module.scss
+.pools-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.pools-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+
+.pools-table th,
+.pools-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.pools-table th {
+  font-weight: 600;
+  background-color: #f7f7f7;
+}
+
+.pools-table tbody tr:hover {
+  background-color: #f0f0f0;
+}
+
+.pools-table a {
+  color: #007bff;
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.row-dropdown {
+  position: absolute;
+  width: 100%;
+  background-color: #f7f7f7;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  z-index: 10;
+  margin-top: -1px;
+
+  &.hidden {
+    display: none;
+  }
+}
+
+.row-dropdown-content {
+  display: flex;
+  gap: 1rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.input-group input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+}
+
+.submit-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  background-color: #007bff;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #0056b3;
+  }
+}
+
+.input-group.add-liquidity {
+  background-color: #e1f4ff;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.input-group.remove-liquidity {
+  background-color: #fde5e5;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}

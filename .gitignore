@@ -1,0 +1,11 @@
+*.swp
+**/*.swp
+.DS_Store
+._.DS_Store
+**/.DS_store
+**/._.DS_store
+
+frontend/node_modules
+frontend/build
+
+.vscode/settings.json
