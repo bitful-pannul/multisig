@@ -11,7 +11,7 @@ const Home = () => {
       <h1 className="header">Your Multisigs</h1>
       <div className="multisigs-list">
         {Object.entries(multisigs).map(([address, multisig]) => (
-          <Link key={address} to={`/multisig/${address}`} className="multisig-link">
+          <Link key={address} to={`/${address}`} className="multisig-link">
             <div className="multisig">
               <h2 className="multisig-name">{multisig.name}</h2>
               <p className="multisig-address">{address}</p>
