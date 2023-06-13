@@ -12,13 +12,10 @@ const Navbar = () => {
     <div className="navbar">
       <div className="navbar-links">
         <Link className="nav-link" to="/">
-          /swap
+          /home
         </Link>
-        <Link className="nav-link" to="/pools">
-          /pools
-        </Link>
-        <Link className="nav-link" to="/tokens">
-          /tokens
+        <Link className="nav-link" to="/create">
+          /create
         </Link>
       </div>
       <div className="account-selector-container">

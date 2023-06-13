@@ -1,0 +1,47 @@
+.home-container {
+  font-family: 'Courier New', Courier, monospace;
+  color: #000;
+  background-color: #fff;
+  padding: 10px;
+
+  .header {
+    text-align: left;
+    margin-bottom: 10px;
+  }
+
+  .multisigs-list {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+
+    .multisig-link {
+      text-decoration: none;
+      color: inherit;
+
+      .multisig {
+        display: flex;
+        flex-direction: column;
+        align-items: start;
+        border: 1px solid #000;
+        margin: 5px;
+        padding: 10px;
+        transition: 0.3s;
+
+        &:hover {
+          background-color: #f0f0f0;
+        }
+
+        .multisig-name {
+          font-size: 1.5em;
+          margin-bottom: 5px;
+        }
+
+        .multisig-address,
+        .multisig-members {
+          font-size: 0.9em;
+          color: #000;
+        }
+      }
+    }
+  }
+}

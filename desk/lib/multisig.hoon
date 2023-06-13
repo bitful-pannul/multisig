@@ -49,8 +49,8 @@
         %invites
       %-  pairs
       %+  turn  ~(tap by invites.up)
-      |=  [* =multisig]
-      :-  `@tas`(rap 3 (scot %ux 0x0) '/' (scot %p ~zod) ~)
+      |=  [i=[@ux @p] =multisig]
+      :-  `@tas`(rap 3 (scot %ux -.i) '/' (scot %p +.i) ~)
       (enjs-multisig multisig)
     ::
         %denied

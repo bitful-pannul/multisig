@@ -1,3 +1,4 @@
 import Navbar from './Navbar'
-
-export { Navbar }
+import Home from './Home'
+import Multisig from './Multisig'
+export { Navbar, Home, Multisig  }
