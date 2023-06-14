@@ -33,6 +33,7 @@ export interface Store {
   multisigs: Multisigs
   invites: {}
   init: () => Promise<void>
+  create: ( address: string, name: string,  ships: string[], members: string[], threshold: string,) => Promise<void>
 }
 
 const useMultisigStore = create<Store>((set, get) => ({
@@ -40,6 +41,21 @@ const useMultisigStore = create<Store>((set, get) => ({
   invites: {},
   init: async () => {
     await api.subscribe(createSubscription('multisig', '/updates', handleUpdate(get, set)));
+  },
+  create: async ( address: string, name: string, ships: string[], members: string[], threshold: string,) => {
+    // or just pass in json from the component itself?
+    const jon = {
+      create: {
+        address,
+        threshold,
+        ships,
+        members,
+        name
+      }
+    }
+    console.log('poke json', jon)
+    const res = await api.poke({ app: 'multisig', mark: 'multisig-action', json: jon })
+    console.log('CREATE res: ', res)
   },
   }))
 

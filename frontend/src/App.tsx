@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { AccountSelector, useWalletStore } from '@uqbar/wallet-ui';
-import { Navbar, Home, Multisig, Proposal } from './components'
+import { Navbar, Home, Multisig, Proposal, Create } from './components'
 import './App.scss'
 import useMultisigstore from './store/multisigStore';
 
@@ -22,6 +22,7 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/create" element={<Create />} />
         <Route path="/:address" element={<Multisig />} />
         <Route path="/:address/proposal/:hash" element={<Proposal />} />
         <Route
